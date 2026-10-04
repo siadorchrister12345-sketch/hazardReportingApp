@@ -79,7 +79,9 @@ if ($user) {
 }
 
 $titleByView = ['dashboard' => 'Overview', 'reports' => 'Hazard reports', 'jobs' => 'Work orders', 'accounts' => 'People & access', 'notifications' => 'Notifications'];
-$pageTitle = $titleByView[$view] ?? 'Overview';
+$pageTitle = $user
+    ? ($titleByView[$view] ?? 'Overview')
+    : ($view === 'register' ? 'Create account' : 'Sign in');
 if ($user && !in_array($view, ['dashboard', 'reports', 'jobs', 'accounts', 'notifications'], true)) {
     $view = 'dashboard';
     $pageTitle = 'Overview';

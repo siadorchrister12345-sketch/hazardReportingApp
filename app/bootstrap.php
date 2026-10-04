@@ -160,7 +160,7 @@ function roadline_locations(): array
     $dataType = $column->fetchColumn();
     if ($dataType === 'geometry') {
         $label = "CONCAT('Roadline hazard #', {$idColumn}, ' · ', ST_AsText({$labelColumn}))";
-        $coordinates = "ST_Y(ST_Centroid({$labelColumn})) AS latitude, ST_X(ST_Centroid({$labelColumn})) AS longitude";
+        $coordinates = "ST_Y({$labelColumn}) AS latitude, ST_X({$labelColumn}) AS longitude";
     } else {
         $label = $labelColumn;
         $coordinates = 'NULL AS latitude, NULL AS longitude';

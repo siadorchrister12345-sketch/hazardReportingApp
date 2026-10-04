@@ -48,3 +48,17 @@ function report_status(array $report): string
 {
     return $report['job_status'] ?: $report['status'];
 }
+
+function format_record_date(array $record, string $format): string
+{
+    $date = $record['created_at'] ?? null;
+    if (!is_string($date) || $date === '') {
+        $date = $record['updated_at'] ?? null;
+    }
+    if (!is_string($date) || $date === '') {
+        return 'Date unavailable';
+    }
+
+    $timestamp = strtotime($date);
+    return $timestamp === false ? 'Date unavailable' : date($format, $timestamp);
+}
