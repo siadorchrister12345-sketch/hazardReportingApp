@@ -24,6 +24,12 @@ function audit_notice(int $userId, int $reportId, string $message, ?string $phot
     $statement->execute([$userId, $reportId, $message, $photoPath]);
 }
 
+function save_conversation_message(int $reportId, int $senderId, string $message, ?string $photoPath = null): void
+{
+    $statement = db()->prepare('INSERT INTO roadline_conversation_messages (report_id, sender_user_id, message, photo_path) VALUES (?, ?, ?, ?)');
+    $statement->execute([$reportId, $senderId, $message, $photoPath]);
+}
+
 function store_image_upload(string $field): ?string
 {
     global $config;
@@ -91,8 +97,8 @@ function serve_report_image(): never
         exit;
     }
 
-    $statement = db()->prepare('SELECT r.id FROM roadline_reports r LEFT JOIN roadline_jobs j ON j.report_id = r.id WHERE (r.photo_path = ? OR EXISTS (SELECT 1 FROM roadline_notifications n WHERE n.report_id = r.id AND n.photo_path = ?))');
-    $statement->execute([$filename, $filename]);
+    $statement = db()->prepare('SELECT r.id FROM roadline_reports r LEFT JOIN roadline_jobs j ON j.report_id = r.id WHERE (r.photo_path = ? OR EXISTS (SELECT 1 FROM roadline_notifications n WHERE n.report_id = r.id AND n.photo_path = ?) OR EXISTS (SELECT 1 FROM roadline_conversation_messages m WHERE m.report_id = r.id AND m.photo_path = ?))');
+    $statement->execute([$filename, $filename, $filename]);
     $authorized = false;
     foreach ($statement->fetchAll() as $report) {
         if (in_array($actor['role'], ['admin', 'super_admin'], true)) {

@@ -185,6 +185,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($notes !== '') {
                 $message .= ' ' . $notes;
             }
+            $conversationMessage = $notes !== ''
+                ? $notes
+                : ($photoPath !== null
+                    ? 'Posted a progress photo.'
+                    : ($status === 'pending_user_verification' ? 'Work is complete and ready for your verification.' : 'Work is now in progress.'));
+            save_conversation_message((int) $job['report_id'], (int) $actor['id'], $conversationMessage, $photoPath);
             audit_notice((int) $job['reporter_id'], (int) $job['report_id'], $message, $photoPath);
             $pdo->commit();
             flash($status === 'pending_user_verification' ? 'Completion sent to the reporter for verification.' : 'Job progress updated.');
@@ -213,11 +219,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($decision === 'resolved') {
                 $pdo->prepare("UPDATE roadline_jobs SET status = 'completed', verified_at = NOW() WHERE id = ?")->execute([$jobId]);
                 $message = 'The reporter confirmed the repair for report ' . $job['public_id'] . '.';
+                save_conversation_message((int) $job['report_id'], (int) $actor['id'], 'Confirmed the repair.', $photoPath);
                 audit_notice((int) $actor['id'], (int) $job['report_id'], 'Your report ' . $job['public_id'] . ' is closed. Thanks for verifying the repair.', $photoPath);
                 flash('Repair confirmed. The hazard report is now closed.');
             } else {
                 $pdo->prepare("UPDATE roadline_jobs SET status = 'in_progress', completed_at = NULL, verified_at = NULL WHERE id = ?")->execute([$jobId]);
                 $message = 'The reporter says report ' . $job['public_id'] . ' still needs attention.';
+                save_conversation_message((int) $job['report_id'], (int) $actor['id'], 'The hazard is still present and needs more work.', $photoPath);
                 audit_notice((int) $actor['id'], (int) $job['report_id'], 'You reported that report ' . $job['public_id'] . ' still needs attention.', $photoPath);
                 flash('Thanks for checking. The job has been reopened for follow-up.', 'info');
             }
@@ -230,6 +238,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $pdo->commit();
             redirect_to('reports');
+        }
+
+        if ($action === 'send_message') {
+            require_role(['user', 'worker']);
+            $photoPath = store_image_upload('conversation_image');
+            if ($photoPath !== null) {
+                $uploadedImages[] = $photoPath;
+            }
+            $jobId = filter_input(INPUT_POST, 'job_id', FILTER_VALIDATE_INT);
+            $message = post_string('message', 2000);
+            if (!$jobId || ($message === '' && $photoPath === null)) {
+                throw new RuntimeException('Write a message or attach a photo before sending.');
+            }
+
+            $pdo = db();
+            $pdo->beginTransaction();
+            $statement = $pdo->prepare('SELECT j.status, j.worker_id, r.id AS report_id, r.reporter_id, r.public_id FROM roadline_jobs j JOIN roadline_reports r ON r.id = j.report_id WHERE j.id = ? AND (r.reporter_id = ? OR j.worker_id = ?) FOR UPDATE');
+            $statement->execute([$jobId, $actor['id'], $actor['id']]);
+            $job = $statement->fetch();
+            $participant = $job && (
+                ($actor['role'] === 'user' && (int) $job['reporter_id'] === (int) $actor['id'])
+                || ($actor['role'] === 'worker' && (int) $job['worker_id'] === (int) $actor['id'])
+            );
+            if (!$participant || !in_array($job['status'], ['assigned', 'in_progress', 'pending_user_verification'], true)) {
+                throw new RuntimeException('This work conversation is not available to your account.');
+            }
+
+            $message = $message !== '' ? $message : 'Shared a progress photo.';
+            save_conversation_message((int) $job['report_id'], (int) $actor['id'], $message, $photoPath);
+            $recipientId = $actor['role'] === 'user' ? (int) $job['worker_id'] : (int) $job['reporter_id'];
+            if ($recipientId > 0) {
+                audit_notice($recipientId, (int) $job['report_id'], $message, $photoPath);
+            }
+            $pdo->commit();
+            flash('Message sent.');
+            redirect_to($actor['role'] === 'user' ? 'reports' : 'jobs');
         }
 
         if ($action === 'save_account') {

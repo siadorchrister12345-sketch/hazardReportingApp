@@ -15,13 +15,14 @@ if ($user && in_array($view, ['login', 'register'], true)) {
 }
 
 $isManager = $user && in_array($user['role'], ['admin', 'super_admin'], true);
-$roadLocations = ($user && $user['role'] === 'user' && in_array($view, ['dashboard', 'reports'], true)) ? roadline_locations() : [];
+$roadLocations = ($user && $user['role'] === 'user' && $view === 'add_report') ? roadline_locations() : [];
 $counts = [];
 $reportRows = [];
 $jobRows = [];
 $accountRows = [];
 $notifications = [];
 $workers = [];
+$conversationMessages = [];
 
 if ($user) {
     $pdo = db();
@@ -68,6 +69,18 @@ if ($user) {
         $jobRows = $reportRows;
     }
 
+    if (!$isManager && in_array($view, ['reports', 'jobs'], true)) {
+        $reportIds = array_values(array_unique(array_map('intval', array_column($reportRows, 'id'))));
+        if ($reportIds) {
+            $placeholders = implode(',', array_fill(0, count($reportIds), '?'));
+            $statement = $pdo->prepare("SELECT m.*, u.name AS sender_name, u.role AS sender_role FROM roadline_conversation_messages m JOIN roadline_app_users u ON u.id = m.sender_user_id WHERE m.report_id IN ({$placeholders}) ORDER BY m.created_at, m.id");
+            $statement->execute($reportIds);
+            foreach ($statement->fetchAll() as $message) {
+                $conversationMessages[(int) $message['report_id']][] = $message;
+            }
+        }
+    }
+
     if ($isManager) {
         $allowedRoles = $user['role'] === 'super_admin' ? "'admin','worker','user'" : "'worker','user'";
         $accountRows = $pdo->query("SELECT id, name, email, role, is_active, created_at FROM roadline_app_users WHERE role IN ({$allowedRoles}) AND deleted_at IS NULL ORDER BY FIELD(role, 'admin', 'worker', 'user'), name")->fetchAll();
@@ -78,13 +91,16 @@ if ($user) {
     $notifications = $statement->fetchAll();
 }
 
-$titleByView = ['dashboard' => 'Overview', 'reports' => 'Hazard reports', 'jobs' => 'Work orders', 'accounts' => 'People & access', 'notifications' => 'Notifications'];
+$titleByView = ['dashboard' => 'Overview', 'reports' => 'My reports', 'add_report' => 'Add report', 'jobs' => 'Work orders', 'accounts' => 'People & access', 'notifications' => 'Notifications'];
 $pageTitle = $user
     ? ($titleByView[$view] ?? 'Overview')
     : ($view === 'register' ? 'Create account' : 'Sign in');
-if ($user && !in_array($view, ['dashboard', 'reports', 'jobs', 'accounts', 'notifications'], true)) {
+if ($user && !in_array($view, ['dashboard', 'reports', 'add_report', 'jobs', 'accounts', 'notifications'], true)) {
     $view = 'dashboard';
     $pageTitle = 'Overview';
+}
+if ($view === 'add_report' && $user && $user['role'] !== 'user') {
+    redirect_to('reports');
 }
 if ($view === 'accounts' && !$isManager) {
     http_response_code(403);
@@ -103,6 +119,7 @@ if ($user) {
 $navItems = [['dashboard', 'Overview', '⌂']];
 if ($user && $user['role'] === 'user') {
     $navItems[] = ['reports', 'My reports', '◎'];
+    $navItems[] = ['add_report', 'Add report', '＋'];
 } else {
     $navItems[] = ['reports', 'Hazard reports', '⚑'];
     $navItems[] = ['jobs', 'Work orders', '▤'];
