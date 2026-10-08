@@ -73,6 +73,7 @@ WHERE User_ID IS NOT NULL AND Status = 'pending_assignment';
 
 ALTER TABLE Updates
     MODIFY Update_ID INT NOT NULL AUTO_INCREMENT,
+    ADD COLUMN Photo_URL VARCHAR(2048) NULL AFTER Description,
     ADD COLUMN Recipient_User_ID INT NULL AFTER Timestamp,
     ADD COLUMN Read_At DATETIME NULL AFTER Recipient_User_ID,
     MODIFY Timestamp DATETIME NULL DEFAULT CURRENT_TIMESTAMP;
@@ -108,6 +109,6 @@ FROM Work_Orders;
 
 CREATE OR REPLACE VIEW roadline_notifications AS
 SELECT Update_ID AS id, Recipient_User_ID AS user_id,
-       Hazard_ID AS report_id, Description AS message,
+       Hazard_ID AS report_id, Description AS message, Photo_URL AS photo_path,
        Read_At AS read_at, Timestamp AS created_at
 FROM Updates;

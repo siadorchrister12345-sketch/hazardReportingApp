@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS Updates (
     Update_ID INT NOT NULL AUTO_INCREMENT,
     Hazard_ID INT NULL,
     Description VARCHAR(10000) NULL,
+    Photo_URL VARCHAR(2048) NULL,
     Timestamp DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     Recipient_User_ID INT NULL,
     Read_At DATETIME NULL,
@@ -136,6 +137,7 @@ SELECT
     Recipient_User_ID AS user_id,
     Hazard_ID AS report_id,
     Description AS message,
+    Photo_URL AS photo_path,
     Read_At AS read_at,
     Timestamp AS created_at
 FROM Updates;

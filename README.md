@@ -10,7 +10,7 @@ A PHP 8.2+ and MySQL hazard-reporting workflow for citizens, field workers, admi
 ## Setup
 
 1. Start Apache and MySQL in XAMPP.
-2. For a new database, import [`database/schema.sql`](database/schema.sql). To keep your existing ERD tables and data, back up the database and run [`database/migrate_roadline_erd.sql`](database/migrate_roadline_erd.sql) once instead. The migration is additive: the app then reads and writes `Users`, `Hazards`, `Work_Orders`, and `Updates` through updatable compatibility views, not separate copies of those records.
+2. For a new database, import [`database/schema.sql`](database/schema.sql). To keep your existing ERD tables and data, back up the database and run [`database/migrate_roadline_erd.sql`](database/migrate_roadline_erd.sql) once instead. If the existing installation has already applied that migration, also back up the database and run [`database/migrate_report_images.sql`](database/migrate_report_images.sql) once to add progress-photo storage. The migrations are additive: the app reads and writes `Users`, `Hazards`, `Work_Orders`, and `Updates` through updatable compatibility views, not separate copies of those records.
 3. Configure the PHP/Apache process environment. Defaults assume XAMPP's local MySQL (`127.0.0.1`, port `3306`, user `root`, blank password). Set `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` if your installation differs. Configure Apache environment variables in `apache/conf/extra/httpd-vhosts.conf` (inside the relevant `<VirtualHost>`) or `apache/conf/httpd.conf`, then restart Apache. Do not commit production credentials.
 4. Inspect the available road tables and columns:
 
@@ -50,6 +50,7 @@ Hazard submissions and status are stored in `Hazards`; assignments and work stat
 - Workers save progress and mark work complete. This changes the job to **Pending User Verification** and notifies the original Reporter.
 - The Reporter confirms the fix to close the job, or reports that the hazard remains to reopen the work and notify Admins.
 - Notifications are persisted in MySQL. Signed-in pages refresh periodically to surface new updates.
+- A JPEG, PNG, or WebP photo (up to 5 MB) is required with each new report. Workers and reporters can optionally attach a progress photo to work updates and repair verification. Uploaded images are stored outside the public web directory and served only to the reporter, assigned worker, or operations admins for that report. Ensure the PHP/Apache account can write to the default storage directory, or set `ROADLINE_UPLOAD_DIR` to choose a different writable private storage directory.
 
 Account removal is a soft delete: access is disabled and the account is hidden from management, while historical report/job references remain intact. Account passwords use PHP's `password_hash`; all application forms use session-bound CSRF tokens.
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $action = (string) ($_POST['action'] ?? '');
+    $uploadedImages = [];
 
     try {
         if ($action === 'login') {
@@ -45,6 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'submit_report') {
             require_role(['user']);
+            $photoPath = store_image_upload('report_image');
+            if ($photoPath === null) {
+                throw new RuntimeException('Add a photo of the hazard before submitting your report.');
+            }
+            $uploadedImages[] = $photoPath;
             $locations = roadline_locations();
             $locationId = post_string('road_location_id', 191);
             $location = null;
@@ -80,12 +86,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Complete every field before submitting your report.');
             }
             $publicId = strtoupper(bin2hex(random_bytes(6)));
-            $statement = db()->prepare('INSERT INTO roadline_reports (public_id, reporter_id, road_location_id, road_location_label, latitude, longitude, category, title, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $statement->execute([$publicId, $actor['id'], $locationId, $locationLabel, $latitude, $longitude, $category, $title, $description]);
+            $pdo = db();
+            $pdo->beginTransaction();
+            $statement = $pdo->prepare('INSERT INTO roadline_reports (public_id, reporter_id, road_location_id, road_location_label, latitude, longitude, category, title, description, photo_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $statement->execute([$publicId, $actor['id'], $locationId, $locationLabel, $latitude, $longitude, $category, $title, $description, $photoPath]);
             if ($latitude !== null && $longitude !== null) {
-                $geometry = db()->prepare('UPDATE Hazards SET Coordinates = ST_GeomFromText(?) WHERE Hazard_ID = ?');
-                $geometry->execute([sprintf('POINT(%s %s)', $longitude, $latitude), db()->lastInsertId()]);
+                $geometry = $pdo->prepare('UPDATE Hazards SET Coordinates = ST_GeomFromText(?) WHERE Hazard_ID = ?');
+                $geometry->execute([sprintf('POINT(%s %s)', $longitude, $latitude), $pdo->lastInsertId()]);
             }
+            $pdo->commit();
             flash('Report ' . $publicId . ' was submitted for review.');
             redirect_to('reports');
         }
@@ -145,6 +154,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'worker_update') {
             require_role(['worker']);
+            $photoPath = store_image_upload('progress_image');
+            if ($photoPath !== null) {
+                $uploadedImages[] = $photoPath;
+            }
             $jobId = filter_input(INPUT_POST, 'job_id', FILTER_VALIDATE_INT);
             $status = post_string('status', 40);
             $notes = post_string('worker_notes', 1000);
@@ -164,10 +177,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if ($status === 'pending_user_verification') {
                 $pdo->prepare('UPDATE roadline_jobs SET status = ?, worker_notes = ?, completed_at = NOW() WHERE id = ?')->execute([$status, $notes, $jobId]);
-                audit_notice((int) $job['reporter_id'], (int) $job['report_id'], 'Work on report ' . $job['public_id'] . ' is marked complete. Please verify the repair.');
+                $message = 'Work on report ' . $job['public_id'] . ' is marked complete. Please verify the repair.';
             } else {
                 $pdo->prepare('UPDATE roadline_jobs SET status = ?, worker_notes = ?, completed_at = NULL WHERE id = ?')->execute([$status, $notes, $jobId]);
+                $message = 'The worker posted a progress update for report ' . $job['public_id'] . '.';
             }
+            if ($notes !== '') {
+                $message .= ' ' . $notes;
+            }
+            audit_notice((int) $job['reporter_id'], (int) $job['report_id'], $message, $photoPath);
             $pdo->commit();
             flash($status === 'pending_user_verification' ? 'Completion sent to the reporter for verification.' : 'Job progress updated.');
             redirect_to('jobs');
@@ -175,6 +193,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'verify_job') {
             require_role(['user']);
+            $photoPath = store_image_upload('progress_image');
+            if ($photoPath !== null) {
+                $uploadedImages[] = $photoPath;
+            }
             $jobId = filter_input(INPUT_POST, 'job_id', FILTER_VALIDATE_INT);
             $decision = post_string('decision', 20);
             if (!$jobId || !in_array($decision, ['resolved', 'still_hazard'], true)) {
@@ -182,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $pdo = db();
             $pdo->beginTransaction();
-            $statement = $pdo->prepare('SELECT j.status, r.id AS report_id, r.public_id FROM roadline_jobs j JOIN roadline_reports r ON r.id = j.report_id WHERE j.id = ? AND r.reporter_id = ? FOR UPDATE');
+            $statement = $pdo->prepare('SELECT j.status, j.worker_id, r.id AS report_id, r.public_id FROM roadline_jobs j JOIN roadline_reports r ON r.id = j.report_id WHERE j.id = ? AND r.reporter_id = ? FOR UPDATE');
             $statement->execute([$jobId, $actor['id']]);
             $job = $statement->fetch();
             if (!$job || $job['status'] !== 'pending_user_verification') {
@@ -190,15 +212,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if ($decision === 'resolved') {
                 $pdo->prepare("UPDATE roadline_jobs SET status = 'completed', verified_at = NOW() WHERE id = ?")->execute([$jobId]);
-                audit_notice((int) $actor['id'], (int) $job['report_id'], 'Your report ' . $job['public_id'] . ' is closed. Thanks for verifying the repair.');
+                $message = 'The reporter confirmed the repair for report ' . $job['public_id'] . '.';
+                audit_notice((int) $actor['id'], (int) $job['report_id'], 'Your report ' . $job['public_id'] . ' is closed. Thanks for verifying the repair.', $photoPath);
                 flash('Repair confirmed. The hazard report is now closed.');
             } else {
                 $pdo->prepare("UPDATE roadline_jobs SET status = 'in_progress', completed_at = NULL, verified_at = NULL WHERE id = ?")->execute([$jobId]);
-                $admins = $pdo->query("SELECT id FROM roadline_app_users WHERE role IN ('admin', 'super_admin') AND is_active = 1 AND deleted_at IS NULL")->fetchAll();
-                foreach ($admins as $admin) {
-                    audit_notice((int) $admin['id'], (int) $job['report_id'], 'Reporter says report ' . $job['public_id'] . ' still needs attention.');
-                }
+                $message = 'The reporter says report ' . $job['public_id'] . ' still needs attention.';
+                audit_notice((int) $actor['id'], (int) $job['report_id'], 'You reported that report ' . $job['public_id'] . ' still needs attention.', $photoPath);
                 flash('Thanks for checking. The job has been reopened for follow-up.', 'info');
+            }
+            if (!empty($job['worker_id'])) {
+                audit_notice((int) $job['worker_id'], (int) $job['report_id'], $message, $photoPath);
+            }
+            $admins = $pdo->query("SELECT id FROM roadline_app_users WHERE role IN ('admin', 'super_admin') AND is_active = 1 AND deleted_at IS NULL")->fetchAll();
+            foreach ($admins as $admin) {
+                audit_notice((int) $admin['id'], (int) $job['report_id'], $message, $photoPath);
             }
             $pdo->commit();
             redirect_to('reports');
@@ -287,6 +315,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
+        foreach ($uploadedImages as $uploadedImage) {
+            delete_stored_image($uploadedImage);
+        }
         if ($error instanceof PDOException) {
             error_log($error->__toString());
             $message = str_contains($error->getMessage(), '1062')
@@ -301,6 +332,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         flash($message, 'error');
-        redirect_to((string) ($_GET['view'] ?? 'dashboard'));
+        $errorView = match ($action) {
+            'login' => 'login',
+            'register' => 'register',
+            default => (string) ($_GET['view'] ?? 'dashboard'),
+        };
+        redirect_to($errorView);
     }
 }
