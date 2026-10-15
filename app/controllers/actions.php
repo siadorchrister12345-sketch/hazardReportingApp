@@ -82,6 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $title = post_string('title', 160);
             $description = post_string('description', 4000);
             $category = post_string('category', 80);
+            if ($category === 'Other road hazard') {
+                $category = post_string('category_other', 80);
+            }
             if ($title === '' || $description === '' || $category === '') {
                 throw new RuntimeException('Complete every field before submitting your report.');
             }

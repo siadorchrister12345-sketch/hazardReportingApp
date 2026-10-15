@@ -1,0 +1,3 @@
+<FilesMatch "^\.env(?:\.example)?$">
+    Require all denied
+</FilesMatch>

@@ -78,26 +78,33 @@ if (mapElement && window.L) {
     const longitudeInput = document.querySelector('#location-longitude');
     const locationSelect = document.querySelector('#road-location-select');
     const pinStatus = document.querySelector('#map-pin-status');
+    const googleMapsLink = document.querySelector('#google-maps-link');
     let marker;
+    let locationWasChosen = false;
 
     const setPin = (latitude, longitude, zoom = true) => {
         const point = [Number(latitude), Number(longitude)];
-        if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) return;
+        if (!Number.isFinite(point[0]) || !Number.isFinite(point[1]) || point[0] < -90 || point[0] > 90 || point[1] < -180 || point[1] > 180) return;
         latitudeInput.value = point[0].toFixed(7);
         longitudeInput.value = point[1].toFixed(7);
         if (marker) marker.setLatLng(point);
         else marker = L.marker(point).addTo(map);
         if (zoom) map.setView(point, 16);
-        pinStatus.textContent = `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`;
+        const coordinates = `${point[0].toFixed(7)},${point[1].toFixed(7)}`;
+        pinStatus.textContent = coordinates;
+        googleMapsLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coordinates)}`;
+        googleMapsLink.hidden = false;
         hasUnsavedChanges = true;
     };
 
     map.on('click', (event) => {
+        locationWasChosen = true;
         locationSelect.value = '';
         setPin(event.latlng.lat, event.latlng.lng, false);
     });
 
     locationSelect.addEventListener('change', () => {
+        locationWasChosen = true;
         const option = locationSelect.selectedOptions[0];
         const latitude = option?.dataset.latitude;
         const longitude = option?.dataset.longitude;
@@ -106,6 +113,7 @@ if (mapElement && window.L) {
 
     [latitudeInput, longitudeInput].forEach((input) => {
         input.addEventListener('change', () => {
+            locationWasChosen = true;
             if (latitudeInput.value && longitudeInput.value) {
                 locationSelect.value = '';
                 setPin(latitudeInput.value, longitudeInput.value);
@@ -120,7 +128,40 @@ if (mapElement && window.L) {
         const point = [Number(firstLocation.dataset.latitude), Number(firstLocation.dataset.longitude)];
         if (point.every(Number.isFinite)) map.setView(point, 13);
     }
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                if (locationWasChosen) return;
+                locationWasChosen = true;
+                locationSelect.value = '';
+                setPin(position.coords.latitude, position.coords.longitude);
+                pinStatus.textContent = `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)} · Current location`;
+            },
+            () => {
+                if (locationWasChosen) return;
+                pinStatus.textContent = firstLocation
+                    ? 'Could not access your location. Choose a saved location or pin the map.'
+                    : 'Could not access your location. Pin the map or enter coordinates.';
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+        );
+    } else {
+        pinStatus.textContent = 'Location is unavailable in this browser. Pin the map or enter coordinates.';
+    }
     window.setTimeout(() => map.invalidateSize(), 100);
+}
+
+const hazardCategory = document.querySelector('#hazard-category-select');
+const otherHazardInput = document.querySelector('#hazard-category-other');
+if (hazardCategory && otherHazardInput) {
+    const updateOtherHazardField = () => {
+        const isOther = hazardCategory.value === 'Other road hazard';
+        otherHazardInput.hidden = !isOther;
+        otherHazardInput.required = isOther;
+        if (!isOther) otherHazardInput.value = '';
+    };
+    hazardCategory.addEventListener('change', updateOtherHazardField);
+    updateOtherHazardField();
 }
 
 if (document.body.dataset.refresh === 'true') {

@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/app/load_env.php';
+load_environment_file(__DIR__ . DIRECTORY_SEPARATOR . '.env');
+
 return [
     'database' => [
         'host' => getenv('DB_HOST') ?: '127.0.0.1',

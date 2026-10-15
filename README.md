@@ -11,7 +11,7 @@ A PHP 8.2+ and MySQL hazard-reporting workflow for citizens, field workers, admi
 
 1. Start Apache and MySQL in XAMPP.
 2. For a new database, import [`database/schema.sql`](database/schema.sql). To keep your existing ERD tables and data, back up the database and run [`database/migrate_roadline_erd.sql`](database/migrate_roadline_erd.sql) once instead. For an existing installation, also back up the database and run [`database/migrate_report_images.sql`](database/migrate_report_images.sql) once to add progress-photo storage and [`database/migrate_report_conversations.sql`](database/migrate_report_conversations.sql) once to add persistent worker/reporter conversations. The migrations are additive: the app reads and writes `Users`, `Hazards`, `Work_Orders`, and `Updates` through updatable compatibility views, not separate copies of those records.
-3. Configure the PHP/Apache process environment. Defaults assume XAMPP's local MySQL (`127.0.0.1`, port `3306`, user `root`, blank password). Set `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` if your installation differs. Configure Apache environment variables in `apache/conf/extra/httpd-vhosts.conf` (inside the relevant `<VirtualHost>`) or `apache/conf/httpd.conf`, then restart Apache. Do not commit production credentials.
+3. Copy `.env.example` to `.env` in the project root and adjust the settings for your installation. The defaults assume XAMPP's local MySQL (`127.0.0.1`, port `3306`, database `roadline`, user `root`, blank password). The app loads `.env` automatically; process-level environment variables take precedence. `.env` is ignored by Git, so keep real credentials there and never commit them.
 4. Inspect the available road tables and columns:
 
    ```sql
@@ -23,7 +23,7 @@ A PHP 8.2+ and MySQL hazard-reporting workflow for citizens, field workers, admi
    ```
 
 5. The default location source is `Hazards.Hazard_ID` and `Hazards.Coordinates`. Existing geometry points appear as map choices; reporters can also pin a new point. The migration adds report details and workflow state to the existing tables and creates views named `roadline_app_users`, `roadline_reports`, `roadline_jobs`, and `roadline_notifications` as the app's database adapter.
-6. Create the first Super Admin from a terminal with credentials supplied only to the process environment:
+6. Create the first Super Admin from a terminal. Enter the credentials into the process environment (or temporarily set the `SUPER_ADMIN_NAME`, `SUPER_ADMIN_EMAIL`, and `SUPER_ADMIN_PASSWORD` values in `.env`), then run:
 
    ```powershell
    $env:SUPER_ADMIN_NAME = 'System Owner'
@@ -33,7 +33,7 @@ A PHP 8.2+ and MySQL hazard-reporting workflow for citizens, field workers, admi
    Remove-Item Env:SUPER_ADMIN_NAME, Env:SUPER_ADMIN_EMAIL, Env:SUPER_ADMIN_PASSWORD
    ```
 
-   Do not put real passwords in this README or other source-controlled files. If a real credential was added here, remove it from any shared copies and change that account's password.
+   If you set these values in `.env`, clear them after creating the account. Do not put real passwords in this README or other source-controlled files. If a real credential was added here, remove it from any shared copies and change that account's password.
 
 7. Visit `http://localhost/hazardReportingApp/`.
 

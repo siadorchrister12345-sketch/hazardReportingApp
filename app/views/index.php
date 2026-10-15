@@ -9,11 +9,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/app.css">
+    <link rel="stylesheet" href="assets/app.css?v=<?= (int) filemtime(__DIR__ . '/../../assets/app.css') ?>">
     <?php if ($user && $user['role'] === 'user' && $view === 'add_report'): ?><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><?php endif; ?>
 </head>
-<body class="<?= $user ? 'app-shell' : 'auth-shell' ?>" data-refresh="<?= $user ? 'true' : 'false' ?>">
-<?php if (!$user): ?>
+<body class="<?= $user && !$isLegalPage ? 'app-shell' : 'auth-shell' ?>" data-refresh="<?= $user && !$isLegalPage ? 'true' : 'false' ?>">
+<?php if (!$user || $isLegalPage): ?>
     <main class="auth-layout">
         <section class="auth-story">
             <a class="brand brand-light" href="index.php"><span class="brand-mark">R</span><span>roadline<span class="brand-dot">.</span></span></a>
@@ -26,7 +26,28 @@
             <div class="road-art" aria-hidden="true"><span></span><i></i><b></b></div>
         </section>
         <section class="auth-panel">
-            <div class="auth-form-wrap">
+            <div class="auth-form-wrap <?= $isLegalPage ? 'auth-form-policy' : '' ?>">
+                <?php if ($isLegalPage): ?>
+                    <a class="auth-back" href="index.php">← Back to sign in</a>
+                    <p class="eyebrow">ROADLINE / PROJECT INFORMATION</p>
+                    <h2><?= e($pageTitle) ?></h2>
+                    <p class="muted"><?= e($legalPolicies[$view]['intro']) ?></p>
+                    <article class="auth-policy">
+                        <?php foreach ($legalPolicies[$view]['sections'] as $section): ?>
+                            <section>
+                                <h3><?= e($section['heading']) ?></h3>
+                                <?php foreach ($section['paragraphs'] as $paragraph): ?>
+                                    <p><?= e($paragraph) ?></p>
+                                <?php endforeach; ?>
+                            </section>
+                        <?php endforeach; ?>
+                    </article>
+                    <nav class="auth-legal-links" aria-label="Policy pages">
+                        <?php foreach ($legalLinkLabels as $legalView => $label): ?>
+                            <a href="index.php?view=<?= e($legalView) ?>"<?= $view === $legalView ? ' aria-current="page"' : '' ?>><?= e($label) ?></a>
+                        <?php endforeach; ?>
+                    </nav>
+                <?php else: ?>
                 <p class="eyebrow"><?= $view === 'register' ? 'Join your community' : 'Roadline operations' ?></p>
                 <h2><?= $view === 'register' ? 'Create your account' : 'Good to see you.' ?></h2>
                 <p class="muted"><?= $view === 'register' ? 'Set up a reporter account to submit and follow hazards.' : 'Sign in to continue to your safety dashboard.' ?></p>
@@ -42,7 +63,16 @@
                     <button class="button button-primary button-wide" type="submit"><?= $view === 'register' ? 'Create reporter account' : 'Sign in' ?><span aria-hidden="true">↗</span></button>
                 </form>
                 <p class="auth-switch"><?= $view === 'register' ? 'Already registered?' : 'Reporting a hazard for the first time?' ?> <a href="index.php?view=<?= $view === 'register' ? 'login' : 'register' ?>"><?= $view === 'register' ? 'Sign in' : 'Create an account' ?></a></p>
-                <?php if ($view !== 'register'): ?><p class="auth-footnote">Staff access is provisioned by a system administrator.</p><?php endif; ?>
+                <?php if ($view !== 'register'): ?>
+                    <p class="auth-footnote">Staff access is provisioned by a system administrator.</p>
+                    <footer class="auth-disclaimer"><strong>Disclaimer:</strong> This website is created for demonstration and academic purposes only as part of an SIA subject project. It is not a real company, official service, registered business, or commercial website. No claims are made regarding actual business operations, legal standing, or real-world services.</footer>
+                    <nav class="auth-legal-links" aria-label="Policy pages">
+                        <?php foreach ($legalLinkLabels as $legalView => $label): ?>
+                            <a href="index.php?view=<?= e($legalView) ?>"><?= e($label) ?></a>
+                        <?php endforeach; ?>
+                    </nav>
+                <?php endif; ?>
+                <?php endif; ?>
             </div>
         </section>
     </main>
@@ -95,8 +125,8 @@
                         <div class="surface create-report" id="new-report"><div class="section-heading"><div><p class="eyebrow">NEW SIGHTING</p><h2>Report a road hazard</h2></div><span class="step-count">01 <i>/</i> 03</span></div>
                             <form method="post" enctype="multipart/form-data" class="form-stack report-form"><input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>"><input type="hidden" name="action" value="submit_report">
                                 <label>Existing Roadline location<select name="road_location_id" id="road-location-select"><option value="">Or place a pin on the map</option><?php foreach ($roadLocations as $location): ?><option value="<?= e((string) $location['id']) ?>" data-latitude="<?= e((string) ($location['latitude'] ?? '')) ?>" data-longitude="<?= e((string) ($location['longitude'] ?? '')) ?>"><?= e((string) $location['label']) ?></option><?php endforeach; ?></select><small>Saved hazard geometry is loaded from the existing Roadline database when available.</small></label>
-                                <div class="map-picker-wrap"><div class="map-picker-heading"><strong>Pin the hazard location</strong><span id="map-pin-status">Click the map or enter coordinates</span></div><div id="location-map" class="location-map" role="application" aria-label="Map for choosing a hazard location"></div><div class="coordinate-fields"><label>Latitude<input type="number" name="latitude" id="location-latitude" min="-90" max="90" step="any" placeholder="e.g. 14.5995"></label><label>Longitude<input type="number" name="longitude" id="location-longitude" min="-180" max="180" step="any" placeholder="e.g. 120.9842"></label></div><small class="map-caption">Map coordinates are saved with your report in roadline.</small></div>
-                                <div class="form-two"><label>Hazard type<select name="category" required><option value="">Choose a category</option><option>Pothole or surface damage</option><option>Damaged sign or signal</option><option>Blocked drain or flooding</option><option>Obstruction or debris</option><option>Damaged barrier or railing</option><option>Other road hazard</option></select></label><label>Short title<input name="title" required maxlength="160" placeholder="e.g. Deep pothole near crossing"></label></div>
+                                <div class="map-picker-wrap"><div class="map-picker-heading"><strong>Pin the hazard location</strong><span id="map-pin-status" role="status">Finding your current location…</span></div><div id="location-map" class="location-map" role="application" aria-label="Map for choosing a hazard location"></div><div class="coordinate-fields"><label>Latitude<input type="number" name="latitude" id="location-latitude" min="-90" max="90" step="any" placeholder="e.g. 14.5995"></label><label>Longitude<input type="number" name="longitude" id="location-longitude" min="-180" max="180" step="any" placeholder="e.g. 120.9842"></label></div><div class="map-actions"><small class="map-caption">Map coordinates are saved with your report in roadline.</small><a id="google-maps-link" class="button button-small button-quiet" target="_blank" rel="noopener noreferrer" hidden>Open pinned location in Google Maps ↗</a></div></div>
+                                <div class="form-two"><label>Hazard type<select name="category" id="hazard-category-select" required><option value="">Choose a category</option><option>Pothole or surface damage</option><option>Damaged sign or signal</option><option>Blocked drain or flooding</option><option>Obstruction or debris</option><option>Damaged barrier or railing</option><option value="Other road hazard">Other road hazard</option></select><input type="text" name="category_other" id="hazard-category-other" maxlength="80" placeholder="Please specify the hazard type" aria-label="Specify other hazard type" hidden></label><label>Short title<input name="title" required maxlength="160" placeholder="e.g. Deep pothole near crossing"></label></div>
                                 <label>What did you notice?<textarea name="description" rows="4" required maxlength="4000" placeholder="Describe what is damaged and any nearby landmark that could help the repair crew."></textarea></label>
                                 <label>Photo proof of the hazard<input type="file" name="report_image" accept="image/jpeg,image/png,image/webp" required><small>Required. JPEG, PNG, or WebP; maximum 5 MB.</small></label>
                                 <div class="form-footer"><span>Reports are reviewed before a repair job is dispatched.</span><button type="submit" class="button button-primary">Submit report <span>↗</span></button></div>
@@ -140,7 +170,7 @@
         </main>
     </div>
 <?php endif; ?>
-<?php if ($user): ?>
+<?php if ($user && !$isLegalPage): ?>
     <dialog class="image-viewer" id="image-viewer" aria-label="Image preview">
         <button class="image-viewer-close" type="button" aria-label="Close image preview">×</button>
         <img id="image-viewer-content" alt="">

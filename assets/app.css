@@ -151,6 +151,8 @@ h1, h2, h3, p { margin-top: 0; }
 .map-picker-heading strong { color: #546259; font-size: 10px; }
 .map-picker-heading span, .map-caption { color: #929c95; font-size: 9px; }
 .location-map { width: 100%; height: 235px; overflow: hidden; border: 1px solid #dfe5dd; border-radius: 4px; background: #e5eadc; z-index: 0; }
+.map-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.map-actions [hidden], #hazard-category-other[hidden] { display: none; }
 .coordinate-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .coordinate-fields label { display: grid; gap: 5px; color: #77847a; font-size: 9px; }
 .coordinate-fields input { width: 100%; min-height: 33px; border: 1px solid #dfe5dd; border-radius: 4px; padding: 7px 9px; color: var(--ink); font-size: 10px; }
@@ -274,6 +276,19 @@ td small { display: block; margin-top: 4px; color: #98a199; font-size: 9px; }
 .auth-switch { color: #7e8981; text-align: center; margin: 20px 0 0; font-size: 10px; }
 .auth-switch a { color: var(--green); font-weight: 700; }
 .auth-footnote { margin-top: 31px; border-top: 1px solid #e5e9e2; padding-top: 15px; text-align: center; color: #9ba49d; font-size: 9px; }
+.auth-disclaimer { margin-top: 18px; color: #7e8981; font-size: 10px; line-height: 1.6; }
+.auth-legal-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.auth-legal-links a { display: grid; min-height: 40px; place-items: center; padding: 8px 12px; border: 1px solid #dce6dd; border-radius: 6px; background: rgba(255,255,255,.72); color: var(--green-dark); font-size: 11px; font-weight: 700; text-align: center; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.auth-legal-links a:hover { border-color: #a8c9b2; background: #fff; transform: translateY(-1px); }
+.auth-legal-links a:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.auth-legal-links a[aria-current="page"] { border-color: #a8c9b2; background: var(--green-soft); }
+.auth-form-policy { width: min(100%, 700px); }
+.auth-back { display: inline-block; margin-bottom: 25px; color: var(--green); font-size: 11px; font-weight: 700; }
+.auth-form-policy > .muted { margin-bottom: 25px; }
+.auth-policy { color: var(--ink-soft); font-size: 12px; line-height: 1.7; }
+.auth-policy section + section { margin-top: 22px; }
+.auth-policy h3 { margin: 0 0 7px; color: var(--ink); font: 700 14px 'Manrope', sans-serif; }
+.auth-policy p { margin: 0 0 10px; }
 .auth-panel .form-stack { gap: 16px; }
 .auth-panel .form-stack input { min-height: 43px; }
 .auth-panel .form-stack label { gap: 7px; }
@@ -319,3 +334,85 @@ td small { display: block; margin-top: 4px; color: #98a199; font-size: 9px; }
     .job-card { padding: 13px; }.job-meta { gap: 7px 12px; }.job-card-top { align-items: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+
+body { font-size: 16px; }
+.muted { color: #69766e; font-size: 14px; }
+.eyebrow { font-size: 11px; }
+.nav-link { font-size: 14px; }
+.workspace-label { font-size: 11px; }
+.help-card strong, .profile-meta strong, .today-label { font-size: 13px; }
+.help-card span:last-child, .profile-meta span, .crumb { font-size: 12px; }
+.page-heading h1 { font-size: clamp(30px, 2.4vw, 36px); }
+.button { min-height: 44px; font-size: 14px; }
+.button-small { min-height: 38px; font-size: 13px; }
+.flash { font-size: 14px; }
+.metric-top { font-size: 14px; }
+.metric-top b { font-size: 11px; }
+.metric > small, .metric > a { font-size: 13px; }
+.section-heading h2 { font-size: 18px; }
+.section-heading .eyebrow, .dispatch-head .eyebrow { font-size: 10px; }
+.text-link, .report-main strong, .dispatch-step strong, .empty-state strong { font-size: 14px; }
+.report-main small, .report-end small, .dispatch-step small { font-size: 12px; }
+.status-pill { min-height: 26px; padding-inline: 9px; font-size: 12px; }
+.dispatch-surface > p, .empty-state p, .aside-note p { font-size: 13px; }
+.dispatch-surface h2 { font-size: 22px; }
+.dispatch-step > span, .step-count { font-size: 13px; }
+.form-stack label { font-size: 14px; }
+.form-stack label small, .map-picker-heading span, .map-caption, .coordinate-fields label { font-size: 12px; }
+.form-stack input, .form-stack textarea, .form-stack select, .assign-form select, .account-edit input, .account-edit select { min-height: 46px; font-size: 15px; }
+.coordinate-fields input { min-height: 42px; font-size: 14px; }
+.map-picker-heading strong { font-size: 13px; }
+.table-count, .table-title, .job-location, .job-update summary, .notification-row strong, .verification-hint { font-size: 13px; }
+th { font-size: 11px; }
+td { font-size: 13px; }
+.record-id { font-size: 11px; }
+.table-title { max-width: 260px; }
+td small, .job-meta, .conversation-empty, .conversation-message p, .conversation-message-meta, .conversation-compose textarea { font-size: 12px; }
+.job-card h3 { font-size: 17px; }
+.conversation-section h4 { font-size: 13px; }
+.image-upload-control { font-size: 12px; }
+.image-upload-control input { font-size: 12px; }
+.image-upload-control small { font-size: 11px; }
+.small-copy, .role-tag, .access-state, .text-button, .resolved-check { font-size: 12px; }
+.notification-row small, .page-footer { font-size: 12px; }
+.auth-form-wrap > .muted, .auth-policy { font-size: 14px; }
+.auth-legal-links a { min-height: 46px; font-size: 14px; }
+.auth-disclaimer { font-size: 13px; }
+.auth-back { font-size: 14px; }
+.auth-policy h3 { font-size: 16px; }
+.story-copy > p:last-child { font-size: 15px; }
+.auth-switch, .auth-footnote { font-size: 13px; }
+.page-footer, .metric > small, .report-main small, .report-end small, .job-meta, td small, .notification-row small, .table-count { color: #68756d; }
+th, .record-id { color: #68756d; }
+
+@media (max-width: 780px) {
+    .crumb { font-size: 12px; }
+    .page-wrap { padding: 24px 16px 18px; }
+    .page-heading h1 { font-size: 30px; }
+    .metric-top { font-size: 12px; }
+    .metric > small, .metric > a { font-size: 12px; }
+    .report-main strong { font-size: 13px; }
+    .report-main small, .report-end small { font-size: 12px; }
+    .status-pill { font-size: 12px; }
+    .form-stack input, .form-stack textarea, .form-stack select, .assign-form select, .account-edit input, .account-edit select { font-size: 16px; }
+    .coordinate-fields { gap: 8px; }
+    .map-picker-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+    .auth-layout { min-height: 100vh; }
+    .auth-panel { padding: 36px 20px 44px; }
+    .story-copy > p:last-child { font-size: 14px; }
+    .conversation-compose { grid-template-columns: minmax(0, 1fr) auto; }
+    .conversation-compose .image-upload-control { grid-column: 1 / -1; max-width: none; }
+}
+
+@media (max-width: 430px) {
+    .topbar { padding-inline: 8px; }
+    .page-wrap { padding-inline: 12px; }
+    .metric-top { font-size: 12px; }
+    .metric > small, .metric > a { font-size: 12px; }
+    .report-main strong { max-width: 44vw; }
+    .report-end .status-pill { max-width: 110px; }
+    .table-surface { padding: 12px; }
+    .auth-panel { padding-inline: 16px; }
+    .auth-legal-links { gap: 8px; }
+    .auth-legal-links a { min-height: 44px; padding-inline: 8px; font-size: 13px; }
+}

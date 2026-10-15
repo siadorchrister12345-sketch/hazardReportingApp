@@ -3,11 +3,13 @@ declare(strict_types=1);
 
 $user = current_user();
 $view = (string) ($_GET['view'] ?? ($user ? 'dashboard' : 'login'));
+$legalViews = ['privacy', 'terms', 'moderation', 'copyright'];
+$isLegalPage = in_array($view, $legalViews, true);
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 $appName = $config['app']['name'];
 
-if (!$user && !in_array($view, ['login', 'register'], true)) {
+if (!$user && !in_array($view, array_merge(['login', 'register'], $legalViews), true)) {
     redirect_to('login');
 }
 if ($user && in_array($view, ['login', 'register'], true)) {
@@ -91,14 +93,136 @@ if ($user) {
     $notifications = $statement->fetchAll();
 }
 
-$titleByView = ['dashboard' => 'Overview', 'reports' => 'My reports', 'add_report' => 'Add report', 'jobs' => 'Work orders', 'accounts' => 'People & access', 'notifications' => 'Notifications'];
+$titleByView = [
+    'dashboard' => 'Overview',
+    'reports' => 'My reports',
+    'add_report' => 'Add report',
+    'jobs' => 'Work orders',
+    'accounts' => 'People & access',
+    'notifications' => 'Notifications',
+    'privacy' => 'Privacy policy',
+    'terms' => 'Terms of use',
+    'moderation' => 'Moderation policy',
+    'copyright' => 'Copyright policy',
+];
+$legalLinkLabels = [
+    'privacy' => 'Privacy policy',
+    'terms' => 'Terms of use',
+    'moderation' => 'Moderation',
+    'copyright' => 'Copyright',
+];
 $pageTitle = $user
     ? ($titleByView[$view] ?? 'Overview')
-    : ($view === 'register' ? 'Create account' : 'Sign in');
-if ($user && !in_array($view, ['dashboard', 'reports', 'add_report', 'jobs', 'accounts', 'notifications'], true)) {
+    : ($titleByView[$view] ?? ($view === 'register' ? 'Create account' : 'Sign in'));
+if ($user && !in_array($view, array_merge(['dashboard', 'reports', 'add_report', 'jobs', 'accounts', 'notifications'], $legalViews), true)) {
     $view = 'dashboard';
     $pageTitle = 'Overview';
 }
+
+$legalPolicies = [
+    'privacy' => [
+        'intro' => 'This privacy policy describes information used by this academic demonstration project. Roadline is not a real company or public service.',
+        'sections' => [
+            [
+                'heading' => 'Information in the demonstration',
+                'paragraphs' => [
+                    'Account details include the name and email address you provide and a password stored as a password hash. Hazard reports may include a category, title, description, location, and uploaded photo. Report conversations and workflow updates may also be stored with their timestamps.',
+                    'The site uses a session cookie to keep you signed in and protect form submissions. Do not use real passwords or submit sensitive personal information, private images, or details about other people.',
+                ],
+            ],
+            [
+                'heading' => 'How information is used and shared',
+                'paragraphs' => [
+                    'Information is used to demonstrate account access, hazard reporting, review, work assignment, and report updates. Depending on the account role and report, authorized demonstration administrators or assigned workers may be able to view report details and photos.',
+                    'The application stores data in its configured database and uploaded images in its configured storage directory. The project also loads Google Fonts, and the report map uses Leaflet resources hosted by unpkg. Those providers may receive ordinary connection information from your browser when their resources are requested.',
+                ],
+            ],
+            [
+                'heading' => 'Storage, retention, and choices',
+                'paragraphs' => [
+                    'Data remains in the project database or image storage until it is removed by a project administrator or the demonstration data is reset. The project may be changed or taken offline as part of coursework. Do not rely on it as a permanent record or submit information you need to keep.',
+                    'If you have entered personal information and want it removed, contact the project maintainer or course instructor through the channel used for this class project. This site is not operated as a commercial service, and this notice is not a promise of a particular legal compliance status.',
+                ],
+            ],
+        ],
+    ],
+    'terms' => [
+        'intro' => 'These terms apply to use of Roadline as an academic and demonstration project only. It is not an official road authority, emergency service, registered business, or commercial service.',
+        'sections' => [
+            [
+                'heading' => 'Demonstration only',
+                'paragraphs' => [
+                    'Reports, maps, job assignments, status changes, and notifications demonstrate software workflows. They do not submit a notice to a government agency, dispatch a real repair crew, or guarantee that anyone will review or act on a report.',
+                    'For an immediate danger or a real road emergency, contact the appropriate local emergency service or road authority directly. Do not rely on this website for urgent help.',
+                ],
+            ],
+            [
+                'heading' => 'Responsible use',
+                'paragraphs' => [
+                    'Use only an account you are authorized to access. Provide lawful, relevant, and respectful demonstration content. Do not upload content that is abusive, threatening, unlawful, misleading, confidential, or that infringes another person’s rights.',
+                    'Do not attempt to disrupt the site, access another person’s account or data without permission, or use the demonstration to impersonate a real organization or official service.',
+                ],
+            ],
+            [
+                'heading' => 'Availability and changes',
+                'paragraphs' => [
+                    'The project is provided for coursework and evaluation, without a promise of uninterrupted availability, data preservation, operational accuracy, or fitness for real-world use. Features and stored demonstration data may change or be removed without notice.',
+                    'Administrators may restrict or deactivate access when needed to protect the project or its users. These terms describe the project’s intended use and are not a substitute for advice about your legal rights.',
+                ],
+            ],
+        ],
+    ],
+    'moderation' => [
+        'intro' => 'Moderation standards help keep this classroom demonstration useful and respectful. The site is not continuously monitored, and submitting a report does not create a real-world response.',
+        'sections' => [
+            [
+                'heading' => 'Content that is not allowed',
+                'paragraphs' => [
+                    'Do not submit threats, harassment, hate, spam, knowingly false or irrelevant reports, unlawful material, private or sensitive personal information, or images and text you do not have permission to share.',
+                    'Keep report descriptions focused on the road hazard. Avoid including identifiable people, vehicle registration details, home addresses, or other information that is not needed to demonstrate the report workflow.',
+                ],
+            ],
+            [
+                'heading' => 'Review and action',
+                'paragraphs' => [
+                    'Demonstration administrators may review submitted reports and related content, reject content that does not fit the project, and restrict or deactivate accounts using the controls available to them. Review may be delayed or may not happen at all.',
+                    'If you believe content should be reviewed, contact the project maintainer or course instructor through the channel used for this class project and identify the report. Do not include sensitive details in a public message.',
+                ],
+            ],
+            [
+                'heading' => 'Real-world hazards',
+                'paragraphs' => [
+                    'This project does not notify a real road authority or emergency service. Report actual hazards directly to the responsible local authority, and use emergency services for immediate danger.',
+                ],
+            ],
+        ],
+    ],
+    'copyright' => [
+        'intro' => 'This page explains the project’s approach to copyright for an educational demonstration. It is informational and does not determine ownership or replace legal advice.',
+        'sections' => [
+            [
+                'heading' => 'Project and third-party materials',
+                'paragraphs' => [
+                    'The Roadline name, interface, and project materials are presented as part of coursework and are not a claim of ownership over any third-party work. Code, fonts, maps, libraries, and other materials may belong to their respective authors and remain subject to their licenses and terms.',
+                    'Do not copy, redistribute, or use project or third-party material outside the permissions granted by its owner or applicable license.',
+                ],
+            ],
+            [
+                'heading' => 'Content you submit',
+                'paragraphs' => [
+                    'You remain responsible for the text and images you submit and must have the rights or permission needed to share them. Submitting content does not transfer its ownership to this project. You allow it to be stored and displayed within the demonstration workflows for coursework and evaluation.',
+                    'Do not submit copyrighted or confidential material unless you are authorized to do so. Submitted content may remain in the project storage until removed by an administrator or the demonstration data is reset.',
+                ],
+            ],
+            [
+                'heading' => 'Copyright concerns',
+                'paragraphs' => [
+                    'If you believe material in this demonstration infringes your copyright, contact the project maintainer or course instructor through the channel used for this class project. Include enough information to identify the material and explain your concern; avoid sending sensitive personal information.',
+                ],
+            ],
+        ],
+    ],
+];
 if ($view === 'add_report' && $user && $user['role'] !== 'user') {
     redirect_to('reports');
 }
