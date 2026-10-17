@@ -1,8 +1,8 @@
-CREATE DATABASE IF NOT EXISTS roadline
+CREATE DATABASE IF NOT EXISTS roadzyrf_roadline
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-USE roadline;
+USE roadzyrf_roadline;
 
 CREATE TABLE IF NOT EXISTS Users (
     User_ID INT NOT NULL AUTO_INCREMENT,

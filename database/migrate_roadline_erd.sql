@@ -2,7 +2,7 @@
 -- Back up the database first. This only adds application fields to the four ERD
 -- tables, then creates compatibility views; it does not delete existing rows.
 
-USE roadline;
+USE roadzyrf_roadline;
 
 ALTER TABLE Users
     MODIFY User_ID INT NOT NULL AUTO_INCREMENT,

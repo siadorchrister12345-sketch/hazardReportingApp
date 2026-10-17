@@ -5,20 +5,20 @@ A PHP 8.2+ and MySQL hazard-reporting workflow for citizens, field workers, admi
 ## Requirements
 
 - XAMPP with Apache, MySQL, PHP 8.2+, and `pdo_mysql` / `mbstring` enabled.
-- A MySQL database named `roadline` and a database account with permission to create views and modify the four Roadline tables.
+- A MySQL database named `roadzyrf_roadline` and a database account with permission to create views and modify the four Roadline tables.
 
 ## Setup
 
 1. Start Apache and MySQL in XAMPP.
 2. For a new database, import [`database/schema.sql`](database/schema.sql). To keep your existing ERD tables and data, back up the database and run [`database/migrate_roadline_erd.sql`](database/migrate_roadline_erd.sql) once instead. For an existing installation, also back up the database and run [`database/migrate_report_images.sql`](database/migrate_report_images.sql) once to add progress-photo storage and [`database/migrate_report_conversations.sql`](database/migrate_report_conversations.sql) once to add persistent worker/reporter conversations. The migrations are additive: the app reads and writes `Users`, `Hazards`, `Work_Orders`, and `Updates` through updatable compatibility views, not separate copies of those records.
-3. Copy `.env.example` to `.env` in the project root and adjust the settings for your installation. The defaults assume XAMPP's local MySQL (`127.0.0.1`, port `3306`, database `roadline`, user `root`, blank password). The app loads `.env` automatically; process-level environment variables take precedence. `.env` is ignored by Git, so keep real credentials there and never commit them.
+3. Copy `.env.example` to `.env` in the project root and adjust the settings for your installation. The defaults assume XAMPP's local MySQL (`127.0.0.1`, port `3306`, database `roadzyrf_roadline`, user `root`, blank password). The app loads `.env` automatically; process-level environment variables take precedence. `.env` is ignored by Git, so keep real credentials there and never commit them.
 4. Inspect the available road tables and columns:
 
    ```sql
-   USE roadline;
+   USE roadzyrf_roadline;
    SELECT TABLE_NAME, COLUMN_NAME
    FROM information_schema.COLUMNS
-   WHERE TABLE_SCHEMA = 'roadline'
+   WHERE TABLE_SCHEMA = 'roadzyrf_roadline'
    ORDER BY TABLE_NAME, ORDINAL_POSITION;
    ```
 

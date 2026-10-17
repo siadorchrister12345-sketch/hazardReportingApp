@@ -1,7 +1,7 @@
 -- Run once on an existing Roadline installation that already applied
 -- migrate_roadline_erd.sql. Back up the database first.
 
-USE roadline;
+USE roadzyrf_roadline;
 
 ALTER TABLE Updates
     ADD COLUMN Photo_URL VARCHAR(2048) NULL AFTER Description;

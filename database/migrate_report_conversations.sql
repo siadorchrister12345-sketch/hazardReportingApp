@@ -1,4 +1,4 @@
-USE roadline;
+USE roadzyrf_roadline;
 
 CREATE TABLE IF NOT EXISTS roadline_conversation_messages (
     id INT NOT NULL AUTO_INCREMENT,
