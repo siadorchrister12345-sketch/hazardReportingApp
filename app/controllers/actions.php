@@ -94,7 +94,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $statement = $pdo->prepare('INSERT INTO roadline_reports (public_id, reporter_id, road_location_id, road_location_label, latitude, longitude, category, title, description, photo_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
             $statement->execute([$publicId, $actor['id'], $locationId, $locationLabel, $latitude, $longitude, $category, $title, $description, $photoPath]);
             if ($latitude !== null && $longitude !== null) {
-                $geometry = $pdo->prepare('UPDATE Hazards SET Coordinates = ST_GeomFromText(?) WHERE Hazard_ID = ?');
+                $roadline = $config['roadline'];
+                $table = '`' . str_replace('`', '``', $roadline['table']) . '`';
+                $idColumn = '`' . str_replace('`', '``', $roadline['id_column']) . '`';
+                $labelColumn = '`' . str_replace('`', '``', $roadline['label_column']) . '`';
+                $geometry = $pdo->prepare("UPDATE {$table} SET {$labelColumn} = ST_GeomFromText(?) WHERE {$idColumn} = ?");
                 $geometry->execute([sprintf('POINT(%s %s)', $longitude, $latitude), $pdo->lastInsertId()]);
             }
             $pdo->commit();
