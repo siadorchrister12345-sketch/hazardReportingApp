@@ -4,6 +4,8 @@ declare(strict_types=1);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $action = (string) ($_POST['action'] ?? '');
+    $isAsyncMessage = $action === 'send_message'
+        && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
     $uploadedImages = [];
 
     try {
@@ -30,10 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $statement = db()->prepare('INSERT INTO roadline_app_users (name, email, password_hash, role) VALUES (?, ?, ?, \'user\')');
             $statement->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT)]);
-            session_regenerate_id(true);
-            $_SESSION['user'] = ['id' => (int) db()->lastInsertId(), 'name' => $name, 'email' => $email, 'role' => 'user'];
-            flash('Your reporter account is ready.');
-            redirect_to();
+            flash('Your reporter account was created. Please sign in to continue.');
+            redirect_to('login');
         }
 
         if ($action === 'logout') {
@@ -151,10 +151,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($statement->rowCount() !== 1) {
                 throw new RuntimeException('This job is no longer awaiting assignment.');
             }
-            $report = db()->prepare('SELECT r.id, r.public_id FROM roadline_reports r JOIN roadline_jobs j ON j.report_id = r.id WHERE j.id = ?');
+            $report = db()->prepare('SELECT r.id, r.public_id, r.reporter_id, worker.name AS worker_name FROM roadline_reports r JOIN roadline_jobs j ON j.report_id = r.id JOIN roadline_app_users worker ON worker.id = j.worker_id WHERE j.id = ?');
             $report->execute([$jobId]);
             $jobReport = $report->fetch();
             audit_notice((int) $workerId, (int) $jobReport['id'], 'A new road hazard job has been assigned to you.');
+            audit_notice((int) $jobReport['reporter_id'], (int) $jobReport['id'], 'A worker has been assigned to report ' . $jobReport['public_id'] . '. Your report is now in progress.');
             flash('Job assigned to worker.');
             redirect_to('jobs');
         }
@@ -249,6 +250,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'send_message') {
             require_role(['user', 'worker']);
+            $returnTab = post_string('return_tab', 20);
+            $allowedReturnTabs = $actor['role'] === 'user' ? ['messages'] : ['ongoing', 'history'];
+            if (!in_array($returnTab, $allowedReturnTabs, true)) {
+                $returnTab = $actor['role'] === 'user' ? 'messages' : 'ongoing';
+            }
             $photoPath = store_image_upload('conversation_image');
             if ($photoPath !== null) {
                 $uploadedImages[] = $photoPath;
@@ -274,13 +280,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $message = $message !== '' ? $message : 'Shared a progress photo.';
             save_conversation_message((int) $job['report_id'], (int) $actor['id'], $message, $photoPath);
+            $messageId = (int) $pdo->lastInsertId();
+            $createdAt = $pdo->prepare('SELECT created_at FROM roadline_conversation_messages WHERE id = ?');
+            $createdAt->execute([$messageId]);
+            $messageDate = $createdAt->fetchColumn();
+            if (!is_string($messageDate)) {
+                throw new RuntimeException('The message could not be confirmed as saved.');
+            }
             $recipientId = $actor['role'] === 'user' ? (int) $job['worker_id'] : (int) $job['reporter_id'];
             if ($recipientId > 0) {
                 audit_notice($recipientId, (int) $job['report_id'], $message, $photoPath);
             }
             $pdo->commit();
+            if ($isAsyncMessage) {
+                header('Content-Type: application/json; charset=utf-8');
+                header('Cache-Control: no-store');
+                echo json_encode([
+                    'message' => [
+                        'id' => $messageId,
+                        'report_id' => (int) $job['report_id'],
+                        'sender_user_id' => (int) $actor['id'],
+                        'sender_name' => $actor['name'],
+                        'message' => $message,
+                        'photo_path' => $photoPath,
+                        'display_date' => date('M j, g:i a', strtotime($messageDate)),
+                    ],
+                ], JSON_THROW_ON_ERROR);
+                exit;
+            }
             flash('Message sent.');
-            redirect_to($actor['role'] === 'user' ? 'reports' : 'jobs');
+            header('Location: index.php?view=' . ($actor['role'] === 'user' ? 'reports&tab=' : 'jobs&job_tab=') . urlencode($returnTab));
+            exit;
         }
 
         if ($action === 'save_account') {
@@ -361,6 +391,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_to('notifications');
         }
 
+        if ($action === 'mark_notification_read') {
+            $notificationId = filter_input(INPUT_POST, 'notification_id', FILTER_VALIDATE_INT);
+            if (!$notificationId) {
+                throw new RuntimeException('Choose a valid notification.');
+            }
+            $statement = db()->prepare('UPDATE roadline_notifications SET read_at = NOW() WHERE id = ? AND user_id = ? AND read_at IS NULL');
+            $statement->execute([$notificationId, $actor['id']]);
+            if ($statement->rowCount() !== 1) {
+                $exists = db()->prepare('SELECT 1 FROM roadline_notifications WHERE id = ? AND user_id = ?');
+                $exists->execute([$notificationId, $actor['id']]);
+                if (!$exists->fetchColumn()) {
+                    throw new RuntimeException('That notification is not available to your account.');
+                }
+            }
+            flash('Notification marked as read.');
+            redirect_to('notifications');
+        }
+
         throw new RuntimeException('Unknown action.');
     } catch (Throwable $error) {
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
@@ -381,6 +429,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$error instanceof RuntimeException) {
                 error_log($error->__toString());
             }
+        }
+        if ($isAsyncMessage) {
+            http_response_code($error instanceof RuntimeException ? 422 : 500);
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+            echo json_encode(['error' => $message], JSON_THROW_ON_ERROR);
+            exit;
         }
         flash($message, 'error');
         $errorView = match ($action) {

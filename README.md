@@ -46,7 +46,7 @@ Hazard submissions and status are stored in `Hazards`; assignments and work stat
 ## Workflow
 
 - Reporters submit hazards tied to a Roadline location and track report/job status.
-- Reporter navigation keeps submitted reports and their history under **My reports**, separate from the **Add report** page. Once a job is assigned, its reporter and assigned worker can exchange text and optional photo messages in a persistent progress conversation while the job is active; completed conversations remain available to read.
+- Reports and work orders are separated into ongoing and resolved sections for staff; reporters keep submitted reports and their history under **My reports**, separate from the **Add report** page. Once a job is assigned, its reporter and assigned worker can exchange text and optional photo messages in a persistent progress conversation while the job is active; conversations can be shown or hidden and completed conversations remain available to read.
 - Admins review incoming reports, approve them into jobs or decline them, and assign approved jobs to active Workers.
 - Workers save progress and mark work complete. This changes the job to **Pending User Verification** and notifies the original Reporter.
 - The Reporter confirms the fix to close the job, or reports that the hazard remains to reopen the work and notify Admins.

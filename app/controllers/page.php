@@ -4,8 +4,12 @@ declare(strict_types=1);
 $user = current_user();
 $view = (string) ($_GET['view'] ?? ($user ? 'dashboard' : 'login'));
 $reportTab = (string) ($_GET['tab'] ?? 'ongoing');
-if (!in_array($reportTab, ['messages', 'history', 'ongoing'], true)) {
+if (!in_array($reportTab, $user && $user['role'] === 'user' ? ['messages', 'history', 'ongoing'] : ['history', 'ongoing'], true)) {
     $reportTab = 'ongoing';
+}
+$jobTab = (string) ($_GET['job_tab'] ?? 'ongoing');
+if (!in_array($jobTab, ['history', 'ongoing'], true)) {
+    $jobTab = 'ongoing';
 }
 $legalViews = ['privacy', 'terms', 'moderation', 'copyright'];
 $isLegalPage = in_array($view, $legalViews, true);
@@ -59,24 +63,24 @@ if ($user) {
     }
 
     if ($isManager) {
-        $reportRows = $pdo->query('SELECT r.*, u.name AS reporter_name, j.id AS job_id, j.status AS job_status, j.worker_id, w.name AS worker_name FROM roadline_reports r LEFT JOIN roadline_app_users u ON u.id = r.reporter_id LEFT JOIN roadline_jobs j ON j.report_id = r.id LEFT JOIN roadline_app_users w ON w.id = j.worker_id ORDER BY r.created_at DESC LIMIT 100')->fetchAll();
+        $reportRows = $pdo->query('SELECT r.*, u.name AS reporter_name, j.id AS job_id, j.status AS job_status, j.worker_id, w.name AS worker_name FROM roadline_reports r LEFT JOIN roadline_app_users u ON u.id = r.reporter_id LEFT JOIN roadline_jobs j ON j.report_id = r.id LEFT JOIN roadline_app_users w ON w.id = j.worker_id ORDER BY r.id DESC LIMIT 100')->fetchAll();
         $jobRows = $pdo->query('SELECT j.*, r.public_id, r.title, r.category, r.road_location_label, r.photo_path, r.reporter_id, reporter.name AS reporter_name, worker.name AS worker_name FROM roadline_jobs j JOIN roadline_reports r ON r.id = j.report_id LEFT JOIN roadline_app_users reporter ON reporter.id = r.reporter_id LEFT JOIN roadline_app_users worker ON worker.id = j.worker_id ORDER BY FIELD(j.status, \'pending_assignment\', \'assigned\', \'in_progress\', \'pending_user_verification\', \'completed\'), j.updated_at DESC LIMIT 100')->fetchAll();
     } elseif ($user['role'] === 'worker') {
         $statement = $pdo->prepare('SELECT j.*, r.public_id, r.title, r.category, r.description, r.road_location_label, r.photo_path, reporter.name AS reporter_name FROM roadline_jobs j JOIN roadline_reports r ON r.id = j.report_id LEFT JOIN roadline_app_users reporter ON reporter.id = r.reporter_id WHERE j.worker_id = ? ORDER BY FIELD(j.status, \'assigned\', \'in_progress\', \'pending_user_verification\', \'completed\'), j.updated_at DESC');
         $statement->execute([$user['id']]);
         $jobRows = $statement->fetchAll();
-        $reportRows = $pdo->prepare('SELECT r.*, j.status AS job_status, j.id AS job_id FROM roadline_reports r LEFT JOIN roadline_jobs j ON j.report_id = r.id WHERE j.worker_id = ? ORDER BY r.created_at DESC');
+        $reportRows = $pdo->prepare('SELECT r.*, j.status AS job_status, j.id AS job_id FROM roadline_reports r LEFT JOIN roadline_jobs j ON j.report_id = r.id WHERE j.worker_id = ? ORDER BY r.id DESC');
         $reportRows->execute([$user['id']]);
         $reportRows = $reportRows->fetchAll();
     } else {
-        $statement = $pdo->prepare('SELECT r.*, j.id AS job_id, j.status AS job_status, j.worker_notes, w.name AS worker_name FROM roadline_reports r LEFT JOIN roadline_jobs j ON j.report_id = r.id LEFT JOIN roadline_app_users w ON w.id = j.worker_id WHERE r.reporter_id = ? ORDER BY r.created_at DESC');
+        $statement = $pdo->prepare('SELECT r.*, j.id AS job_id, j.status AS job_status, j.worker_notes, w.name AS worker_name FROM roadline_reports r LEFT JOIN roadline_jobs j ON j.report_id = r.id LEFT JOIN roadline_app_users w ON w.id = j.worker_id WHERE r.reporter_id = ? ORDER BY r.id DESC');
         $statement->execute([$user['id']]);
         $reportRows = $statement->fetchAll();
         $jobRows = $reportRows;
     }
 
     $displayReportRows = $reportRows;
-    if ($view === 'reports' && $user['role'] === 'user') {
+    if ($view === 'reports') {
         $displayReportRows = array_values(array_filter($reportRows, static function (array $report) use ($reportTab): bool {
             $status = report_status($report);
             return match ($reportTab) {
@@ -87,9 +91,17 @@ if ($user) {
         }));
     }
 
-    if (!$isManager && in_array($view, ['reports', 'jobs'], true)) {
-        $conversationRows = $view === 'reports' && $user['role'] === 'user' ? $displayReportRows : $reportRows;
-        $reportIds = array_values(array_unique(array_map('intval', array_column($conversationRows, 'id'))));
+    $displayJobRows = $jobRows;
+    if ($view === 'jobs') {
+        $displayJobRows = array_values(array_filter($jobRows, static fn (array $job): bool => (
+            $jobTab === 'history' ? $job['status'] === 'completed' : $job['status'] !== 'completed'
+        )));
+    }
+
+    if ($view === 'jobs' || ($view === 'reports' && $user['role'] === 'user' && $reportTab === 'messages')) {
+        $conversationRows = $view === 'jobs' ? $displayJobRows : $displayReportRows;
+        $reportIdColumn = $view === 'jobs' ? 'report_id' : 'id';
+        $reportIds = array_values(array_unique(array_map('intval', array_column($conversationRows, $reportIdColumn))));
         if ($reportIds) {
             $placeholders = implode(',', array_fill(0, count($reportIds), '?'));
             $statement = $pdo->prepare("SELECT m.*, u.name AS sender_name, u.role AS sender_role FROM roadline_conversation_messages m JOIN roadline_app_users u ON u.id = m.sender_user_id WHERE m.report_id IN ({$placeholders}) ORDER BY m.created_at, m.id");

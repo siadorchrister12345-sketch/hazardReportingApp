@@ -25,6 +25,86 @@ document.querySelectorAll('form').forEach((form) => {
     form.addEventListener('change', () => { hasUnsavedChanges = true; });
 });
 
+document.querySelectorAll('form.conversation-compose').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const submitButton = form.querySelector('button[type="submit"]');
+        const status = form.querySelector('[data-message-status]');
+        const conversationThread = form.closest('.conversation-content')?.querySelector('[data-live-report-id]');
+        if (!submitButton || !status || !conversationThread) {
+            console.error('Could not send message: the conversation form is incomplete.');
+            return;
+        }
+
+        status.hidden = false;
+        status.classList.remove('is-error');
+        status.textContent = 'Sending…';
+        submitButton.disabled = true;
+        try {
+            const response = await fetch('index.php', {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                cache: 'no-store',
+            });
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error(response.status === 401
+                    ? 'Your session has expired. Sign in again to send this message.'
+                    : 'The message could not be sent. Please reload the page and try again.');
+            }
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'The message could not be sent.');
+
+            const message = result.message;
+            if (!conversationThread.querySelector(`[data-message-id="${message.id}"]`)) {
+                conversationThread.querySelector('.conversation-empty')?.remove();
+                const article = document.createElement('article');
+                article.className = 'conversation-message is-mine';
+                article.dataset.messageId = String(message.id);
+                const meta = document.createElement('div');
+                meta.className = 'conversation-message-meta';
+                const sender = document.createElement('strong');
+                sender.textContent = 'You';
+                const date = document.createElement('span');
+                date.textContent = message.display_date;
+                meta.append(sender, date);
+                const text = document.createElement('p');
+                text.textContent = message.message;
+                article.append(meta, text);
+                if (message.photo_path) {
+                    const image = document.createElement('img');
+                    image.className = 'proof-image conversation-image image-preview';
+                    image.src = `index.php?image=${encodeURIComponent(message.photo_path)}`;
+                    image.alt = 'Conversation photo';
+                    image.loading = 'lazy';
+                    image.setAttribute('role', 'button');
+                    image.tabIndex = 0;
+                    image.setAttribute('aria-label', 'View full conversation photo');
+                    article.append(image);
+                }
+                conversationThread.append(article);
+                const count = form.closest('.conversation-disclosure')?.querySelector('[data-conversation-count]');
+                if (count) count.textContent = String(Number(count.textContent || 0) + 1);
+            }
+            conversationThread.dataset.lastMessageId = String(message.id);
+            conversationThread.scrollTop = conversationThread.scrollHeight;
+            form.reset();
+            status.textContent = 'Message sent.';
+        } catch (error) {
+            status.classList.add('is-error');
+            status.textContent = error instanceof Error ? error.message : 'The message could not be sent.';
+            console.error('Could not send conversation message.', error);
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+});
+
 const imageViewer = document.querySelector('#image-viewer');
 const imageViewerContent = document.querySelector('#image-viewer-content');
 const imageViewerCaption = document.querySelector('#image-viewer-caption');
@@ -256,11 +336,13 @@ if (reportImageInput && openCameraButton && cameraDialog && cameraPreview && cam
 
 if (document.body.dataset.refresh === 'true') {
     const renderNotification = (notification) => {
-        const row = document.createElement('a');
+        const row = document.createElement('article');
         row.className = `notification-row${notification.read_at ? '' : ' notification-unread'}`;
         row.dataset.notificationId = String(notification.id);
         row.dataset.notificationRead = notification.read_at ? 'true' : 'false';
-        row.href = notification.report_url;
+        const link = document.createElement('a');
+        link.className = 'notification-link';
+        link.href = notification.report_url;
         const symbol = document.createElement('span');
         symbol.className = 'notification-symbol';
         symbol.textContent = notification.read_at ? '·' : '!';
@@ -283,7 +365,38 @@ if (document.body.dataset.refresh === 'true') {
         }
         const arrow = document.createElement('b');
         arrow.textContent = '↗';
-        row.append(symbol, content, arrow);
+        link.append(symbol, content, arrow);
+        row.append(link);
+        if (notification.read_at) {
+            const readStatus = document.createElement('span');
+            readStatus.className = 'notification-read-status';
+            readStatus.textContent = 'Read';
+            row.append(readStatus);
+        } else {
+            const csrfInput = document.querySelector('#mark-notifications-read input[name="csrf_token"]');
+            if (!csrfInput) throw new Error('Notification read controls are missing a CSRF token.');
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.className = 'notification-read-form';
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = 'csrf_token';
+            csrf.value = csrfInput.value;
+            const action = document.createElement('input');
+            action.type = 'hidden';
+            action.name = 'action';
+            action.value = 'mark_notification_read';
+            const id = document.createElement('input');
+            id.type = 'hidden';
+            id.name = 'notification_id';
+            id.value = String(notification.id);
+            const button = document.createElement('button');
+            button.className = 'button button-small button-quiet';
+            button.type = 'submit';
+            button.textContent = 'Mark read';
+            form.append(csrf, action, id, button);
+            row.append(form);
+        }
         return row;
     };
 
@@ -354,11 +467,16 @@ if (document.body.dataset.refresh === 'true') {
             updates.messages.forEach((message) => {
                 const thread = document.getElementById(`live-conversation-${message.report_id}`);
                 if (!thread) return;
+                if (thread.querySelector(`[data-message-id="${message.id}"]`)) {
+                    thread.dataset.lastMessageId = String(message.id);
+                    return;
+                }
                 const empty = thread.querySelector('.conversation-empty');
                 empty?.remove();
 
                 const article = document.createElement('article');
                 article.className = `conversation-message${Number(message.sender_user_id) === Number(document.body.dataset.userId) ? ' is-mine' : ''}`;
+                article.dataset.messageId = String(message.id);
                 const meta = document.createElement('div');
                 meta.className = 'conversation-message-meta';
                 const sender = document.createElement('strong');
