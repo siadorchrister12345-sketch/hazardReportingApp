@@ -6,6 +6,9 @@ require __DIR__ . '/app/helpers.php';
 if (isset($_GET['image'])) {
     serve_report_image();
 }
+if (isset($_GET['updates'])) {
+    require __DIR__ . '/app/controllers/updates.php';
+}
 require __DIR__ . '/app/controllers/actions.php';
 require __DIR__ . '/app/controllers/page.php';
 require __DIR__ . '/app/views/index.php';

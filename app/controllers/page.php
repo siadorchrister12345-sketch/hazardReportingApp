@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 $user = current_user();
 $view = (string) ($_GET['view'] ?? ($user ? 'dashboard' : 'login'));
+$reportTab = (string) ($_GET['tab'] ?? 'ongoing');
+if (!in_array($reportTab, ['messages', 'history', 'ongoing'], true)) {
+    $reportTab = 'ongoing';
+}
 $legalViews = ['privacy', 'terms', 'moderation', 'copyright'];
 $isLegalPage = in_array($view, $legalViews, true);
 $flash = $_SESSION['flash'] ?? null;
@@ -71,8 +75,21 @@ if ($user) {
         $jobRows = $reportRows;
     }
 
+    $displayReportRows = $reportRows;
+    if ($view === 'reports' && $user['role'] === 'user') {
+        $displayReportRows = array_values(array_filter($reportRows, static function (array $report) use ($reportTab): bool {
+            $status = report_status($report);
+            return match ($reportTab) {
+                'messages' => !empty($report['job_id']),
+                'history' => in_array($status, ['completed', 'rejected'], true),
+                default => !in_array($status, ['completed', 'rejected'], true),
+            };
+        }));
+    }
+
     if (!$isManager && in_array($view, ['reports', 'jobs'], true)) {
-        $reportIds = array_values(array_unique(array_map('intval', array_column($reportRows, 'id'))));
+        $conversationRows = $view === 'reports' && $user['role'] === 'user' ? $displayReportRows : $reportRows;
+        $reportIds = array_values(array_unique(array_map('intval', array_column($conversationRows, 'id'))));
         if ($reportIds) {
             $placeholders = implode(',', array_fill(0, count($reportIds), '?'));
             $statement = $pdo->prepare("SELECT m.*, u.name AS sender_name, u.role AS sender_role FROM roadline_conversation_messages m JOIN roadline_app_users u ON u.id = m.sender_user_id WHERE m.report_id IN ({$placeholders}) ORDER BY m.created_at, m.id");
@@ -251,4 +268,4 @@ if ($user && $user['role'] === 'user') {
 if ($isManager) {
     $navItems[] = ['accounts', 'People & access', '♙'];
 }
-$navItems[] = ['notifications', 'Notifications' . ($unreadCount ? ' (' . $unreadCount . ')' : ''), '◉'];
+$navItems[] = ['notifications', 'Notifications', '◉'];

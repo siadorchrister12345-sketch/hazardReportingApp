@@ -164,8 +164,237 @@ if (hazardCategory && otherHazardInput) {
     updateOtherHazardField();
 }
 
+const reportImageInput = document.querySelector('#report-image-input');
+const openCameraButton = document.querySelector('#open-camera');
+const cameraDialog = document.querySelector('#camera-dialog');
+const cameraPreview = document.querySelector('#camera-preview');
+const cameraStatus = document.querySelector('#camera-status');
+const capturePhotoButton = document.querySelector('#capture-photo');
+if (reportImageInput && openCameraButton && cameraDialog && cameraPreview && cameraStatus && capturePhotoButton) {
+    let cameraStream;
+
+    const stopCamera = () => {
+        cameraStream?.getTracks().forEach((track) => track.stop());
+        cameraStream = undefined;
+        cameraPreview.srcObject = null;
+        capturePhotoButton.disabled = true;
+    };
+
+    openCameraButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        cameraDialog.showModal();
+        cameraStatus.textContent = 'Requesting permission to use your camera…';
+        if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+            cameraStatus.textContent = 'Camera access is not available in this browser. Use HTTPS or localhost, or choose a photo file instead.';
+            return;
+        }
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: { facingMode: { ideal: 'environment' } },
+            });
+            if (!cameraDialog.open) {
+                stopCamera();
+                return;
+            }
+            cameraPreview.srcObject = cameraStream;
+            await cameraPreview.play();
+            cameraStatus.textContent = 'Camera ready. Frame the hazard and take a photo.';
+            capturePhotoButton.disabled = false;
+        } catch (error) {
+            stopCamera();
+            cameraStatus.textContent = error instanceof DOMException && error.name === 'NotAllowedError'
+                ? 'Camera permission was denied. Allow camera access in your browser settings, then try again.'
+                : error instanceof DOMException && error.name === 'NotFoundError'
+                    ? 'No camera was found. Choose an existing photo file instead.'
+                    : 'The camera could not be opened. Check browser permissions and try again, or choose a photo file.';
+        }
+    });
+
+    capturePhotoButton.addEventListener('click', () => {
+        if (!cameraPreview.videoWidth || !cameraPreview.videoHeight) {
+            cameraStatus.textContent = 'The camera is not ready yet. Wait a moment and try again.';
+            return;
+        }
+
+        const scale = Math.min(1, 1920 / Math.max(cameraPreview.videoWidth, cameraPreview.videoHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(cameraPreview.videoWidth * scale);
+        canvas.height = Math.round(cameraPreview.videoHeight * scale);
+        const context = canvas.getContext('2d');
+        if (!context) {
+            cameraStatus.textContent = 'Could not process the photo. Please try again or choose an image file.';
+            return;
+        }
+        context.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                cameraStatus.textContent = 'Could not save the photo. Please try again or choose an image file.';
+                return;
+            }
+            if (blob.size > 5 * 1024 * 1024) {
+                cameraStatus.textContent = 'The photo is larger than 5 MB. Try again or choose a smaller image.';
+                return;
+            }
+
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([blob], 'hazard-photo.jpg', { type: 'image/jpeg' }));
+            reportImageInput.files = transfer.files;
+            reportImageInput.dispatchEvent(new Event('change', { bubbles: true }));
+            cameraDialog.close();
+        }, 'image/jpeg', 0.85);
+    });
+
+    document.querySelector('#camera-close').addEventListener('click', () => cameraDialog.close());
+    cameraDialog.addEventListener('click', (event) => {
+        if (event.target === cameraDialog) cameraDialog.close();
+    });
+    cameraDialog.addEventListener('close', stopCamera);
+}
+
 if (document.body.dataset.refresh === 'true') {
-    window.setTimeout(() => {
-        if (!hasUnsavedChanges && document.visibilityState === 'visible') window.location.reload();
-    }, 60_000);
+    const renderNotification = (notification) => {
+        const row = document.createElement('a');
+        row.className = `notification-row${notification.read_at ? '' : ' notification-unread'}`;
+        row.dataset.notificationId = String(notification.id);
+        row.dataset.notificationRead = notification.read_at ? 'true' : 'false';
+        row.href = notification.report_url;
+        const symbol = document.createElement('span');
+        symbol.className = 'notification-symbol';
+        symbol.textContent = notification.read_at ? '·' : '!';
+        const content = document.createElement('span');
+        const message = document.createElement('strong');
+        message.textContent = notification.message;
+        const details = document.createElement('small');
+        details.textContent = `${notification.title} · ${notification.display_date}`;
+        content.append(message, details);
+        if (notification.photo_path) {
+            const image = document.createElement('img');
+            image.className = 'activity-image image-preview';
+            image.src = `index.php?image=${encodeURIComponent(notification.photo_path)}`;
+            image.alt = 'Progress photo';
+            image.loading = 'lazy';
+            image.setAttribute('role', 'button');
+            image.tabIndex = 0;
+            image.setAttribute('aria-label', 'View full progress photo');
+            content.append(image);
+        }
+        const arrow = document.createElement('b');
+        arrow.textContent = '↗';
+        row.append(symbol, content, arrow);
+        return row;
+    };
+
+    const updateNotifications = (notifications, unreadCount) => {
+        document.querySelectorAll('[data-unread-indicator]').forEach((indicator) => {
+            indicator.hidden = unreadCount === 0;
+        });
+        const count = document.querySelector('[data-notification-count]');
+        if (count) {
+            count.textContent = unreadCount ? `(${unreadCount.toLocaleString()})` : '';
+            count.hidden = unreadCount === 0;
+        }
+        const nav = document.querySelector('[data-notification-nav]');
+        nav?.setAttribute('aria-label', unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications');
+        const readButton = document.querySelector('#mark-notifications-read');
+        if (readButton) readButton.hidden = unreadCount === 0;
+
+        const feed = document.querySelector('#notification-feed');
+        if (!feed) return;
+        if (!notifications.length) {
+            if (feed.querySelector('.empty-state')) return;
+            const empty = document.createElement('div');
+            empty.className = 'empty-state';
+            const icon = document.createElement('span');
+            icon.className = 'empty-icon';
+            icon.textContent = '◉';
+            const heading = document.createElement('strong');
+            heading.textContent = 'You are all caught up';
+            const copy = document.createElement('p');
+            copy.textContent = 'Updates about your reports and work will appear here.';
+            empty.append(icon, heading, copy);
+            feed.replaceChildren(empty);
+            return;
+        }
+        const currentRows = Array.from(feed.querySelectorAll('[data-notification-id]'));
+        const currentSignature = currentRows.map((row) => `${row.dataset.notificationId}:${row.dataset.notificationRead}`).join(',');
+        const nextSignature = notifications.map((notification) => `${notification.id}:${notification.read_at ? 'true' : 'false'}`).join(',');
+        if (currentSignature === nextSignature) return;
+        const list = document.createElement('div');
+        list.className = 'notification-list';
+        notifications.forEach((notification) => {
+            const row = renderNotification(notification);
+            list.append(row);
+        });
+        feed.replaceChildren(list);
+    };
+
+    const pollUpdates = async () => {
+        if (document.visibilityState !== 'visible') return;
+        try {
+            const cursors = {};
+            document.querySelectorAll('[data-live-report-id]').forEach((thread) => {
+                cursors[thread.dataset.liveReportId] = Number(thread.dataset.lastMessageId || 0);
+            });
+            const parameters = new URLSearchParams({ updates: '1', messages: JSON.stringify(cursors) });
+            const response = await fetch(`index.php?${parameters}`, {
+                headers: { Accept: 'application/json' },
+                cache: 'no-store',
+                credentials: 'same-origin',
+            });
+            if (response.status === 401) {
+                window.location.assign('index.php?view=login');
+                return;
+            }
+            if (!response.ok) throw new Error(`Live update request failed (${response.status}).`);
+            const updates = await response.json();
+
+            updates.messages.forEach((message) => {
+                const thread = document.getElementById(`live-conversation-${message.report_id}`);
+                if (!thread) return;
+                const empty = thread.querySelector('.conversation-empty');
+                empty?.remove();
+
+                const article = document.createElement('article');
+                article.className = `conversation-message${Number(message.sender_user_id) === Number(document.body.dataset.userId) ? ' is-mine' : ''}`;
+                const meta = document.createElement('div');
+                meta.className = 'conversation-message-meta';
+                const sender = document.createElement('strong');
+                sender.textContent = Number(message.sender_user_id) === Number(document.body.dataset.userId) ? 'You' : message.sender_name;
+                const date = document.createElement('span');
+                date.textContent = message.display_date;
+                meta.append(sender, date);
+                const text = document.createElement('p');
+                text.textContent = message.message;
+                article.append(meta, text);
+                if (message.photo_path) {
+                    const image = document.createElement('img');
+                    image.className = 'proof-image conversation-image image-preview';
+                    image.src = `index.php?image=${encodeURIComponent(message.photo_path)}`;
+                    image.alt = 'Conversation photo';
+                    image.loading = 'lazy';
+                    image.setAttribute('role', 'button');
+                    image.tabIndex = 0;
+                    image.setAttribute('aria-label', 'View full conversation photo');
+                    article.append(image);
+                }
+                thread.append(article);
+                thread.dataset.lastMessageId = String(message.id);
+                const count = thread.closest('.conversation-disclosure')?.querySelector('[data-conversation-count]');
+                if (count) count.textContent = String(Number(count.textContent || 0) + 1);
+                thread.scrollTop = thread.scrollHeight;
+            });
+            updateNotifications(updates.notifications, updates.unread_count);
+        } catch (error) {
+            console.error('Could not refresh live messages and notifications.', error);
+        }
+    };
+
+    const pollAndReschedule = async () => {
+        if (document.visibilityState === 'visible') await pollUpdates();
+        window.setTimeout(pollAndReschedule, 15_000);
+    };
+    window.setTimeout(pollAndReschedule, 10_000);
 }
