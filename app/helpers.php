@@ -173,3 +173,41 @@ function format_record_date(array $record, string $format): string
     $timestamp = strtotime($date);
     return $timestamp === false ? 'Date unavailable' : date($format, $timestamp);
 }
+
+function report_map_url(array $report): ?string
+{
+    $latitude = $report['latitude'] ?? null;
+    $longitude = $report['longitude'] ?? null;
+    if (is_numeric($latitude) && is_numeric($longitude)) {
+        $latitude = (float) $latitude;
+        $longitude = (float) $longitude;
+        if ($latitude >= -90 && $latitude <= 90 && $longitude >= -180 && $longitude <= 180) {
+            $query = number_format($latitude, 7, '.', '') . ',' . number_format($longitude, 7, '.', '');
+            return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($query);
+        }
+    }
+
+    $location = trim((string) ($report['road_location_label'] ?? ''));
+    return $location === ''
+        ? null
+        : 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($location);
+}
+
+function report_map_embed_url(array $report): ?string
+{
+    $latitude = $report['latitude'] ?? null;
+    $longitude = $report['longitude'] ?? null;
+    if (is_numeric($latitude) && is_numeric($longitude)) {
+        $latitude = (float) $latitude;
+        $longitude = (float) $longitude;
+        if ($latitude >= -90 && $latitude <= 90 && $longitude >= -180 && $longitude <= 180) {
+            $query = number_format($latitude, 7, '.', '') . ',' . number_format($longitude, 7, '.', '');
+            return 'https://maps.google.com/maps?output=embed&q=' . rawurlencode($query);
+        }
+    }
+
+    $location = trim((string) ($report['road_location_label'] ?? ''));
+    return $location === ''
+        ? null
+        : 'https://maps.google.com/maps?output=embed&q=' . rawurlencode($location);
+}

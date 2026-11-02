@@ -1,17 +1,44 @@
 const sidebar = document.querySelector('#sidebar');
 const menuToggle = document.querySelector('#menu-toggle');
+const sidebarClose = document.querySelector('#sidebar-close');
 let hasUnsavedChanges = false;
+
+const closeSidebar = () => {
+    sidebar?.classList.remove('is-open');
+    menuToggle?.setAttribute('aria-expanded', 'false');
+    menuToggle?.setAttribute('aria-label', 'Open navigation');
+};
 
 menuToggle?.addEventListener('click', () => {
     const isOpen = sidebar?.classList.toggle('is-open') ?? false;
     menuToggle.setAttribute('aria-expanded', String(isOpen));
+    menuToggle.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
+});
+
+sidebarClose?.addEventListener('click', closeSidebar);
+
+document.querySelectorAll('.job-map-toggle, .report-map-toggle').forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+        const panel = toggle.closest('.job-map-panel, .report-map-panel');
+        if (!panel) return;
+        const isOpen = panel.classList.toggle('is-open');
+        if (isOpen) {
+            const iframe = panel.querySelector('iframe[data-src]');
+            if (iframe && !iframe.hasAttribute('src')) iframe.src = iframe.dataset.src;
+        }
+        toggle.setAttribute('aria-expanded', String(isOpen));
+        toggle.textContent = isOpen ? 'Hide location map' : 'Show location map';
+    });
 });
 
 document.addEventListener('click', (event) => {
     if (!sidebar?.classList.contains('is-open')) return;
     if (sidebar.contains(event.target) || menuToggle?.contains(event.target)) return;
-    sidebar.classList.remove('is-open');
-    menuToggle?.setAttribute('aria-expanded', 'false');
+    closeSidebar();
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && sidebar?.classList.contains('is-open')) closeSidebar();
 });
 
 document.querySelectorAll('form[data-confirm]').forEach((form) => {
@@ -263,6 +290,7 @@ if (reportImageInput && openCameraButton && cameraDialog && cameraPreview && cam
     openCameraButton.addEventListener('click', async (event) => {
         event.preventDefault();
         event.stopPropagation();
+        document.documentElement.classList.add('camera-open');
         cameraDialog.showModal();
         cameraStatus.textContent = 'Requesting permission to use your camera…';
         if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
@@ -331,7 +359,10 @@ if (reportImageInput && openCameraButton && cameraDialog && cameraPreview && cam
     cameraDialog.addEventListener('click', (event) => {
         if (event.target === cameraDialog) cameraDialog.close();
     });
-    cameraDialog.addEventListener('close', stopCamera);
+    cameraDialog.addEventListener('close', () => {
+        document.documentElement.classList.remove('camera-open');
+        stopCamera();
+    });
 }
 
 if (document.body.dataset.refresh === 'true') {
