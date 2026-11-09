@@ -269,6 +269,8 @@ td small { display: block; margin-top: 4px; color: #98a199; font-size: 9px; }
 .conversation-compose { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 110px) auto; gap: 6px; align-items: end; margin-top: 9px; }
 .conversation-compose textarea { width: 100%; min-height: 38px; resize: vertical; border: 1px solid #dfe5dd; border-radius: 4px; padding: 7px; font: inherit; font-size: 10px; }
 .conversation-compose .image-upload-control { max-width: 110px; min-width: 0; }
+.conversation-compose .image-upload-control small { font-size: 9px; line-height: 1.35; overflow-wrap: anywhere; }
+.conversation-compose .image-upload-control [data-attachment-preview] { max-width: 100%; max-height: 100px; border-radius: 6px; object-fit: contain; }
 .conversation-send-status { grid-column: 1 / -1; margin: 0; color: #387854; font-size: 12px; }
 .conversation-send-status.is-error { color: #a44e3a; }
 .conversation-empty { margin: 4px 0; font-size: 10px; }

@@ -24,6 +24,72 @@ function audit_notice(int $userId, int $reportId, string $message, ?string $phot
     $statement->execute([$userId, $reportId, $message, $photoPath]);
 }
 
+function notify_admins(int $reportId, string $message, ?string $photoPath = null, ?int $excludeUserId = null): void
+{
+    $statement = db()->prepare("SELECT id FROM roadline_app_users WHERE role IN ('admin', 'super_admin') AND is_active = 1 AND deleted_at IS NULL");
+    $statement->execute();
+    foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $adminId) {
+        $adminId = (int) $adminId;
+        if ($adminId !== $excludeUserId) {
+            audit_notice($adminId, $reportId, $message, $photoPath);
+        }
+    }
+}
+
+function notification_url(array $actor, array $notification): string
+{
+    if ($actor['role'] === 'user') {
+        return 'index.php?view=reports&tab=messages';
+    }
+
+    $jobStatus = $notification['job_status'] ?? null;
+    if (is_string($jobStatus) && $jobStatus !== '') {
+        return $jobStatus === 'completed'
+            ? 'index.php?view=jobs&job_tab=history'
+            : 'index.php?view=jobs';
+    }
+
+    return $actor['role'] === 'worker' ? 'index.php?view=jobs' : 'index.php?view=reports';
+}
+
+function dashboard_counts(array $actor): array
+{
+    $pdo = db();
+    if (in_array($actor['role'], ['admin', 'super_admin'], true)) {
+        return [
+            'review' => (int) $pdo->query("SELECT COUNT(*) FROM roadline_reports WHERE status = 'pending_review'")->fetchColumn(),
+            'active' => (int) $pdo->query("SELECT COUNT(*) FROM roadline_jobs WHERE status IN ('pending_assignment','assigned','in_progress','pending_user_verification')")->fetchColumn(),
+            'verify' => (int) $pdo->query("SELECT COUNT(*) FROM roadline_jobs WHERE status = 'pending_user_verification'")->fetchColumn(),
+            'closed' => (int) $pdo->query("SELECT COUNT(*) FROM roadline_jobs WHERE status = 'completed'")->fetchColumn(),
+        ];
+    }
+
+    if ($actor['role'] === 'worker') {
+        $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_jobs WHERE worker_id = ? AND status IN ('assigned','in_progress')");
+        $statement->execute([$actor['id']]);
+        $active = (int) $statement->fetchColumn();
+        $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_jobs WHERE worker_id = ? AND status = 'completed'");
+        $statement->execute([$actor['id']]);
+        return ['active' => $active, 'closed' => (int) $statement->fetchColumn()];
+    }
+
+    $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_reports r WHERE r.reporter_id = ? AND r.status <> 'rejected' AND NOT EXISTS (SELECT 1 FROM roadline_jobs j WHERE j.report_id = r.id AND j.status = 'completed')");
+    $statement->execute([$actor['id']]);
+    $active = (int) $statement->fetchColumn();
+    $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_reports r JOIN roadline_jobs j ON j.report_id = r.id WHERE r.reporter_id = ? AND j.status = 'pending_user_verification'");
+    $statement->execute([$actor['id']]);
+    $verify = (int) $statement->fetchColumn();
+    $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_reports r JOIN roadline_jobs j ON j.report_id = r.id WHERE r.reporter_id = ? AND j.status = 'completed'");
+    $statement->execute([$actor['id']]);
+    return ['active' => $active, 'verify' => $verify, 'closed' => (int) $statement->fetchColumn()];
+}
+
+function registration_password_is_valid(string $password): bool
+{
+    return mb_strlen($password, 'UTF-8') >= 10
+        && preg_match('/\A(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])\S+\z/u', $password) === 1;
+}
+
 function save_conversation_message(int $reportId, int $senderId, string $message, ?string $photoPath = null): void
 {
     $statement = db()->prepare('INSERT INTO roadline_conversation_messages (report_id, sender_user_id, message, photo_path) VALUES (?, ?, ?, ?)');

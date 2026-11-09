@@ -59,26 +59,25 @@ if ($reportCursors) {
         $statement = $pdo->prepare("SELECT m.id, m.report_id, m.sender_user_id, m.message, m.photo_path, m.created_at, u.name AS sender_name FROM roadline_conversation_messages m JOIN ({$cursorUnion}) cursors ON cursors.report_id = m.report_id JOIN roadline_app_users u ON u.id = m.sender_user_id WHERE m.id > cursors.last_message_id ORDER BY m.report_id, m.id");
         $statement->execute($cursorParameters);
         foreach ($statement->fetchAll() as $message) {
-            $message['display_date'] = date('M j, g:i a', strtotime($message['created_at']));
+            $message['display_date'] = date('M j, g:i A', strtotime($message['created_at']));
             $messages[] = $message;
         }
     }
 }
 
-$statement = $pdo->prepare('SELECT n.id, n.report_id, n.message, n.photo_path, n.read_at, n.created_at, r.title FROM roadline_notifications n JOIN roadline_reports r ON r.id = n.report_id WHERE n.user_id = ? ORDER BY n.created_at DESC, n.id DESC LIMIT 12');
+$statement = $pdo->prepare('SELECT n.id, n.report_id, n.message, n.photo_path, n.read_at, n.created_at, r.title, (SELECT j.status FROM roadline_jobs j WHERE j.report_id = n.report_id LIMIT 1) AS job_status FROM roadline_notifications n JOIN roadline_reports r ON r.id = n.report_id WHERE n.user_id = ? ORDER BY n.created_at DESC, n.id DESC LIMIT 12');
 $statement->execute([$actor['id']]);
 $notifications = $statement->fetchAll();
 foreach ($notifications as &$notification) {
-    $notification['display_date'] = date('M j, Y · g:i a', strtotime($notification['created_at']));
-    $notification['report_url'] = $actor['role'] === 'user'
-        ? 'index.php?view=reports&tab=messages'
-        : 'index.php?view=jobs';
+    $notification['display_date'] = date('M j, Y · g:i A', strtotime($notification['created_at']));
+    $notification['report_url'] = notification_url($actor, $notification);
 }
 unset($notification);
 
 $statement = $pdo->prepare('SELECT COUNT(*) FROM roadline_notifications WHERE user_id = ? AND read_at IS NULL');
 $statement->execute([$actor['id']]);
 $unreadCount = (int) $statement->fetchColumn();
+$dashboardCounts = ($_GET['dashboard'] ?? '') === '1' ? dashboard_counts($actor) : null;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, private');
@@ -87,5 +86,6 @@ echo json_encode([
     'messages' => $messages,
     'notifications' => $notifications,
     'unread_count' => $unreadCount,
+    'dashboard_counts' => $dashboardCounts,
 ], JSON_THROW_ON_ERROR);
 exit;

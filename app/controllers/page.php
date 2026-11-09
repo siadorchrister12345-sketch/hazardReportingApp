@@ -36,31 +36,7 @@ $conversationMessages = [];
 
 if ($user) {
     $pdo = db();
-    if ($isManager) {
-        $counts = [
-            'review' => (int) $pdo->query("SELECT COUNT(*) FROM roadline_reports WHERE status = 'pending_review'")->fetchColumn(),
-            'active' => (int) $pdo->query("SELECT COUNT(*) FROM roadline_jobs WHERE status IN ('pending_assignment','assigned','in_progress','pending_user_verification')")->fetchColumn(),
-            'verify' => (int) $pdo->query("SELECT COUNT(*) FROM roadline_jobs WHERE status = 'pending_user_verification'")->fetchColumn(),
-            'closed' => (int) $pdo->query("SELECT COUNT(*) FROM roadline_jobs WHERE status = 'completed'")->fetchColumn(),
-        ];
-    } elseif ($user['role'] === 'worker') {
-        $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_jobs WHERE worker_id = ? AND status IN ('assigned','in_progress')");
-        $statement->execute([$user['id']]);
-        $counts['active'] = (int) $statement->fetchColumn();
-        $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_jobs WHERE worker_id = ? AND status = 'completed'");
-        $statement->execute([$user['id']]);
-        $counts['closed'] = (int) $statement->fetchColumn();
-    } else {
-        $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_reports WHERE reporter_id = ? AND status <> 'rejected'");
-        $statement->execute([$user['id']]);
-        $counts['active'] = (int) $statement->fetchColumn();
-        $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_reports r JOIN roadline_jobs j ON j.report_id = r.id WHERE r.reporter_id = ? AND j.status = 'pending_user_verification'");
-        $statement->execute([$user['id']]);
-        $counts['verify'] = (int) $statement->fetchColumn();
-        $statement = $pdo->prepare("SELECT COUNT(*) FROM roadline_reports r JOIN roadline_jobs j ON j.report_id = r.id WHERE r.reporter_id = ? AND j.status = 'completed'");
-        $statement->execute([$user['id']]);
-        $counts['closed'] = (int) $statement->fetchColumn();
-    }
+    $counts = dashboard_counts($user);
 
     if ($isManager) {
         $reportRows = $pdo->query('SELECT r.*, u.name AS reporter_name, j.id AS job_id, j.status AS job_status, j.worker_id, w.name AS worker_name FROM roadline_reports r LEFT JOIN roadline_app_users u ON u.id = r.reporter_id LEFT JOIN roadline_jobs j ON j.report_id = r.id LEFT JOIN roadline_app_users w ON w.id = j.worker_id ORDER BY r.id DESC LIMIT 100')->fetchAll();
@@ -117,7 +93,7 @@ if ($user) {
         $accountRows = $pdo->query("SELECT id, name, email, role, is_active, created_at FROM roadline_app_users WHERE role IN ({$allowedRoles}) AND deleted_at IS NULL ORDER BY FIELD(role, 'admin', 'worker', 'user'), name")->fetchAll();
         $workers = $pdo->query("SELECT id, name FROM roadline_app_users WHERE role = 'worker' AND is_active = 1 AND deleted_at IS NULL ORDER BY name")->fetchAll();
     }
-    $statement = $pdo->prepare('SELECT n.*, r.public_id, r.title FROM roadline_notifications n JOIN roadline_reports r ON r.id = n.report_id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 12');
+    $statement = $pdo->prepare('SELECT n.*, r.public_id, r.title, (SELECT j.status FROM roadline_jobs j WHERE j.report_id = n.report_id LIMIT 1) AS job_status FROM roadline_notifications n JOIN roadline_reports r ON r.id = n.report_id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 12');
     $statement->execute([$user['id']]);
     $notifications = $statement->fetchAll();
 }

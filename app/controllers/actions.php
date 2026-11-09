@@ -27,8 +27,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = post_string('name', 120);
             $email = mb_strtolower(post_string('email', 190));
             $password = (string) ($_POST['password'] ?? '');
-            if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 10) {
-                throw new RuntimeException('Enter your name, a valid email, and a password of at least 10 characters.');
+            $passwordConfirmation = (string) ($_POST['password_confirmation'] ?? '');
+            if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new RuntimeException('Enter your name and a valid email address.');
+            }
+            if (!registration_password_is_valid($password)) {
+                throw new RuntimeException('Use at least 10 characters with no spaces, including an uppercase letter, a lowercase letter, a number, and a symbol.');
+            }
+            if (!hash_equals($password, $passwordConfirmation)) {
+                throw new RuntimeException('The password confirmation does not match.');
             }
             $statement = db()->prepare('INSERT INTO roadline_app_users (name, email, password_hash, role) VALUES (?, ?, ?, \'user\')');
             $statement->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT)]);
@@ -93,14 +100,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
             $statement = $pdo->prepare('INSERT INTO roadline_reports (public_id, reporter_id, road_location_id, road_location_label, latitude, longitude, category, title, description, photo_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
             $statement->execute([$publicId, $actor['id'], $locationId, $locationLabel, $latitude, $longitude, $category, $title, $description, $photoPath]);
+            $reportId = (int) $pdo->lastInsertId();
             if ($latitude !== null && $longitude !== null) {
                 $roadline = $config['roadline'];
                 $table = '`' . str_replace('`', '``', $roadline['table']) . '`';
                 $idColumn = '`' . str_replace('`', '``', $roadline['id_column']) . '`';
                 $labelColumn = '`' . str_replace('`', '``', $roadline['label_column']) . '`';
                 $geometry = $pdo->prepare("UPDATE {$table} SET {$labelColumn} = ST_GeomFromText(?) WHERE {$idColumn} = ?");
-                $geometry->execute([sprintf('POINT(%s %s)', $longitude, $latitude), $pdo->lastInsertId()]);
+                $geometry->execute([sprintf('POINT(%s %s)', $longitude, $latitude), $reportId]);
             }
+            notify_admins($reportId, 'A new hazard report ' . $publicId . ' was submitted for review.', null, (int) $actor['id']);
             $pdo->commit();
             flash('Report ' . $publicId . ' was submitted for review.');
             redirect_to('reports');
@@ -129,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 audit_notice((int) $report['reporter_id'], (int) $reportId, 'Your report ' . $report['public_id'] . ' was reviewed and could not be approved.');
             }
+            notify_admins((int) $reportId, 'Report ' . $report['public_id'] . ($decision === 'approve' ? ' was approved.' : ' was declined.'), null, (int) $actor['id']);
             $pdo->commit();
             flash($decision === 'approve' ? 'Report approved and converted to a job.' : 'Report declined and reporter notified.');
             redirect_to('reports');
@@ -146,16 +156,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$worker->fetch()) {
                 throw new RuntimeException('That worker is not available.');
             }
-            $statement = db()->prepare("UPDATE roadline_jobs SET worker_id = ?, assigned_by = ?, status = 'assigned' WHERE id = ? AND status = 'pending_assignment'");
+            $pdo = db();
+            $pdo->beginTransaction();
+            $statement = $pdo->prepare("UPDATE roadline_jobs SET worker_id = ?, assigned_by = ?, status = 'assigned' WHERE id = ? AND status = 'pending_assignment'");
             $statement->execute([$workerId, $actor['id'], $jobId]);
             if ($statement->rowCount() !== 1) {
                 throw new RuntimeException('This job is no longer awaiting assignment.');
             }
-            $report = db()->prepare('SELECT r.id, r.public_id, r.reporter_id, worker.name AS worker_name FROM roadline_reports r JOIN roadline_jobs j ON j.report_id = r.id JOIN roadline_app_users worker ON worker.id = j.worker_id WHERE j.id = ?');
+            $report = $pdo->prepare('SELECT r.id, r.public_id, r.reporter_id, worker.name AS worker_name FROM roadline_reports r JOIN roadline_jobs j ON j.report_id = r.id JOIN roadline_app_users worker ON worker.id = j.worker_id WHERE j.id = ?');
             $report->execute([$jobId]);
             $jobReport = $report->fetch();
             audit_notice((int) $workerId, (int) $jobReport['id'], 'A new road hazard job has been assigned to you.');
             audit_notice((int) $jobReport['reporter_id'], (int) $jobReport['id'], 'A worker has been assigned to report ' . $jobReport['public_id'] . '. Your report is now in progress.');
+            notify_admins((int) $jobReport['id'], 'A worker was assigned to report ' . $jobReport['public_id'] . '.', null, (int) $actor['id']);
+            $pdo->commit();
             flash('Job assigned to worker.');
             redirect_to('jobs');
         }
@@ -200,6 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     : ($status === 'pending_user_verification' ? 'Work is complete and ready for your verification.' : 'Work is now in progress.'));
             save_conversation_message((int) $job['report_id'], (int) $actor['id'], $conversationMessage, $photoPath);
             audit_notice((int) $job['reporter_id'], (int) $job['report_id'], $message, $photoPath);
+            notify_admins((int) $job['report_id'], $message, $photoPath);
             $pdo->commit();
             flash($status === 'pending_user_verification' ? 'Completion sent to the reporter for verification.' : 'Job progress updated.');
             redirect_to('jobs');
@@ -240,10 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!empty($job['worker_id'])) {
                 audit_notice((int) $job['worker_id'], (int) $job['report_id'], $message, $photoPath);
             }
-            $admins = $pdo->query("SELECT id FROM roadline_app_users WHERE role IN ('admin', 'super_admin') AND is_active = 1 AND deleted_at IS NULL")->fetchAll();
-            foreach ($admins as $admin) {
-                audit_notice((int) $admin['id'], (int) $job['report_id'], $message, $photoPath);
-            }
+            notify_admins((int) $job['report_id'], $message, $photoPath, (int) $actor['id']);
             $pdo->commit();
             redirect_to('reports');
         }
@@ -291,6 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($recipientId > 0) {
                 audit_notice($recipientId, (int) $job['report_id'], $message, $photoPath);
             }
+            notify_admins((int) $job['report_id'], 'New conversation message from ' . $actor['name'] . ': ' . $message, $photoPath);
             $pdo->commit();
             if ($isAsyncMessage) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -303,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'sender_name' => $actor['name'],
                         'message' => $message,
                         'photo_path' => $photoPath,
-                        'display_date' => date('M j, g:i a', strtotime($messageDate)),
+                        'display_date' => date('M j, g:i A', strtotime($messageDate)),
                     ],
                 ], JSON_THROW_ON_ERROR);
                 exit;

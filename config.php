@@ -20,7 +20,7 @@ return [
     ],
     'app' => [
         'name' => getenv('APP_NAME') ?: 'Roadline Safety',
-        'timezone' => getenv('APP_TIMEZONE') ?: 'UTC',
+        'timezone' => getenv('APP_TIMEZONE') ?: 'Asia/Manila',
     ],
     'uploads' => [
         'directory' => getenv('ROADLINE_UPLOAD_DIR') ?: dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'roadline-private' . DIRECTORY_SEPARATOR . 'hazard-images',

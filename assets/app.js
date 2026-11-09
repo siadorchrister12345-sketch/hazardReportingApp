@@ -52,6 +52,65 @@ document.querySelectorAll('form').forEach((form) => {
     form.addEventListener('change', () => { hasUnsavedChanges = true; });
 });
 
+const registrationForm = document.querySelector('[data-registration-form]');
+if (registrationForm) {
+    const password = registrationForm.querySelector('input[name="password"]');
+    const confirmation = registrationForm.querySelector('[data-password-confirmation]');
+    if (password && confirmation) {
+        const validateConfirmation = () => {
+            confirmation.setCustomValidity(
+                confirmation.value && confirmation.value !== password.value
+                    ? 'The password confirmation does not match.'
+                    : '',
+            );
+        };
+        password.addEventListener('input', validateConfirmation);
+        confirmation.addEventListener('input', validateConfirmation);
+        registrationForm.addEventListener('submit', validateConfirmation);
+    }
+}
+
+document.querySelectorAll('[data-conversation-image]').forEach((input) => {
+    const control = input.closest('.image-upload-control');
+    const status = control?.querySelector('[data-attachment-status]');
+    const preview = control?.querySelector('[data-attachment-preview]');
+    if (!status || !preview) return;
+    let previewUrl = null;
+    const clearPreview = () => {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = null;
+        preview.removeAttribute('src');
+        preview.hidden = true;
+    };
+    input.addEventListener('change', () => {
+        const file = input.files?.[0];
+        if (!file) {
+            status.textContent = 'JPEG, PNG, or WebP · up to 5 MB. Select a photo, then press Send.';
+            clearPreview();
+            return;
+        }
+        const supportedType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+            || /\.(jpe?g|png|webp)$/i.test(file.name);
+        if (!supportedType) {
+            status.textContent = 'Choose a JPEG, PNG, or WebP image.';
+            input.value = '';
+            clearPreview();
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            status.textContent = 'This photo is larger than 5 MB. Choose a smaller image.';
+            input.value = '';
+            clearPreview();
+            return;
+        }
+        status.textContent = `Selected: ${file.name} · press Send to attach`;
+        clearPreview();
+        previewUrl = URL.createObjectURL(file);
+        preview.src = previewUrl;
+        preview.hidden = false;
+    });
+});
+
 document.querySelectorAll('form.conversation-compose').forEach((form) => {
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -121,6 +180,7 @@ document.querySelectorAll('form.conversation-compose').forEach((form) => {
             conversationThread.dataset.lastMessageId = String(message.id);
             conversationThread.scrollTop = conversationThread.scrollHeight;
             form.reset();
+            form.querySelector('[data-conversation-image]')?.dispatchEvent(new Event('change', { bubbles: true }));
             status.textContent = 'Message sent.';
         } catch (error) {
             status.classList.add('is-error');
@@ -482,7 +542,11 @@ if (document.body.dataset.refresh === 'true') {
             document.querySelectorAll('[data-live-report-id]').forEach((thread) => {
                 cursors[thread.dataset.liveReportId] = Number(thread.dataset.lastMessageId || 0);
             });
-            const parameters = new URLSearchParams({ updates: '1', messages: JSON.stringify(cursors) });
+            const parameters = new URLSearchParams({
+                updates: '1',
+                messages: JSON.stringify(cursors),
+                dashboard: document.body.dataset.dashboard === 'true' ? '1' : '0',
+            });
             const response = await fetch(`index.php?${parameters}`, {
                 headers: { Accept: 'application/json' },
                 cache: 'no-store',
@@ -494,6 +558,12 @@ if (document.body.dataset.refresh === 'true') {
             }
             if (!response.ok) throw new Error(`Live update request failed (${response.status}).`);
             const updates = await response.json();
+            if (updates.dashboard_counts) {
+                document.querySelectorAll('[data-dashboard-count]').forEach((count) => {
+                    const value = updates.dashboard_counts[count.dataset.dashboardCount];
+                    if (Number.isInteger(value)) count.textContent = value.toLocaleString();
+                });
+            }
 
             updates.messages.forEach((message) => {
                 const thread = document.getElementById(`live-conversation-${message.report_id}`);

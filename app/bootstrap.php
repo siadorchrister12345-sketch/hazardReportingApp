@@ -33,6 +33,15 @@ function db(): PDO
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
+        $timezone = new DateTimeZone($config['app']['timezone']);
+        $offsetSeconds = $timezone->getOffset(new DateTimeImmutable('now', $timezone));
+        $offset = sprintf(
+            '%s%02d:%02d',
+            $offsetSeconds < 0 ? '-' : '+',
+            intdiv(abs($offsetSeconds), 3600),
+            intdiv(abs($offsetSeconds) % 3600, 60)
+        );
+        $connection->exec('SET time_zone = ' . $connection->quote($offset));
     }
 
     return $connection;
