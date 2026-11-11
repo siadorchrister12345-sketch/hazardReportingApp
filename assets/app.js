@@ -58,6 +58,33 @@ const registrationForm = document.querySelector('[data-registration-form]');
 if (registrationForm) {
     const password = registrationForm.querySelector('input[name="password"]');
     const confirmation = registrationForm.querySelector('[data-password-confirmation]');
+    const requirementItems = registrationForm.querySelectorAll('[data-password-rule]');
+    const passwordStatus = registrationForm.querySelector('[data-password-status]');
+    if (password && requirementItems.length && passwordStatus) {
+        const passwordRules = {
+            length: (value) => Array.from(value).length >= 10,
+            uppercase: (value) => /[A-Z]/.test(value),
+            lowercase: (value) => /[a-z]/.test(value),
+            number: (value) => /[0-9]/.test(value),
+            symbol: (value) => /[^A-Za-z0-9]/.test(value),
+            spaces: (value) => value.length > 0 && !/\s/u.test(value),
+        };
+        const updatePasswordRequirements = () => {
+            let metRequirements = 0;
+            requirementItems.forEach((item) => {
+                const rule = passwordRules[item.dataset.passwordRule];
+                const isMet = Boolean(rule?.(password.value));
+                item.classList.toggle('is-met', isMet);
+                item.querySelector('span').textContent = isMet ? '✓' : '○';
+                if (isMet) metRequirements += 1;
+            });
+            passwordStatus.textContent = metRequirements === requirementItems.length
+                ? 'Password meets all requirements.'
+                : `${metRequirements} of ${requirementItems.length} password requirements met.`;
+        };
+        password.addEventListener('input', updatePasswordRequirements);
+        updatePasswordRequirements();
+    }
     if (password && confirmation) {
         const validateConfirmation = () => {
             confirmation.setCustomValidity(

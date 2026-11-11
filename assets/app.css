@@ -145,6 +145,12 @@ h1, h2, h3, p { margin-top: 0; }
 .form-stack { display: grid; gap: 14px; }
 .form-stack label { display: grid; gap: 6px; color: #546259; font-size: 10px; font-weight: 700; }
 .form-stack label small { color: #919b94; font-size: 9px; font-weight: 400; }
+.password-requirements { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 12px; margin: -7px 0 0; padding: 11px 12px; border: 1px solid #e3e9e1; border-radius: 10px; background: linear-gradient(135deg, #f8faf6, #f0f5ef); list-style: none; }
+.password-requirements li { display: flex; align-items: center; gap: 6px; color: #849087; font-size: 10px; font-weight: 500; transition: color .18s ease; }
+.password-requirements li > span { display: grid; place-items: center; width: 16px; height: 16px; flex: 0 0 16px; border: 1px solid #cbd4cb; border-radius: 50%; color: #94a097; font-size: 10px; transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease; }
+.password-requirements li.is-met { color: var(--green-dark); }
+.password-requirements li.is-met > span { transform: scale(1.05); border-color: #9bc5a7; background: linear-gradient(145deg, #e0f2e5, #cce8d4); color: var(--green); font-weight: 700; }
+.password-requirements-status { margin: -7px 0 0; color: #78877c; font-size: 10px; }
 .report-photo-field { display: grid; gap: 6px; }
 .report-photo-field > label { color: #546259; font-size: 14px; font-weight: 700; }
 .report-photo-field > small { color: #919b94; font-size: 12px; }

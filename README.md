@@ -39,6 +39,27 @@ A PHP 8.2+ and MySQL hazard-reporting workflow for citizens, field workers, admi
 
 The first reporter account can be created from the public home page or sign-in screen. Staff accounts are provisioned by an Admin or Super Admin. The Super Admin can create Admins, Workers, and Reporters; Admins can create Workers and Reporters. The original ERD has no login credentials, so the migration adds `Email` and `Password_Hash` to `Users`. Existing user rows remain intact but need an email, a PHP password hash, and an app role before their owners can sign in. Roles used by the app are `super_admin`, `admin`, `worker`, and `user`.
 
+## Main features
+
+- **Public information and account access:** Visitors can learn how Roadline works, read its policy pages, and register as Reporters or sign in.
+- **Hazard reporting with location and photo:** Reporters describe a road hazard, select an existing Roadline location or place a map pin, and attach a photo. The report remains visible to its Reporter while it is reviewed and worked on.
+- **Report review and work assignment:** Admins review incoming reports, approve them into work orders or decline them, and assign approved work to an active Worker.
+- **Field progress and conversations:** Workers can post progress notes and photos, mark work ready for verification, and exchange persistent text and photo messages with the Reporter while the job is active.
+- **Reporter verification and follow-up:** The original Reporter confirms completed work to close the job. If the hazard is still present, the Reporter can reopen it for follow-up.
+- **Dashboards, history, and notifications:** Role-specific dashboards summarize report and work status. Reports and jobs have ongoing and history views, while in-app notifications keep participants informed about workflow changes.
+- **Account administration:** Authorized staff can create, edit, pause, restore, or remove managed accounts. Removal disables access without deleting historical report and job records.
+- **Private image handling and form protection:** Uploaded photos are stored outside the public web directory and access is restricted to people involved in the report and operations staff. Application forms use session-bound CSRF tokens, and passwords are stored as hashes.
+
+## Primary users
+
+| User | Role in the platform |
+| --- | --- |
+| **Community members / Reporters** | Create an account, submit hazards with a location and photo, follow progress, message the assigned Worker, and confirm whether a reported repair resolved the hazard. In the application, this role is named `user`. |
+| **Field Workers** | View work orders assigned to them, share progress notes and photos, communicate with the Reporter, and mark work complete for Reporter verification. |
+| **Administrators** | Review and approve or decline reports, assign approved work to active Workers, monitor operations, and manage Worker and Reporter accounts. |
+| **Super Administrators** | Perform administrator functions and manage Admin accounts, in addition to Worker and Reporter accounts. This role is also used to establish the system's initial administrator. |
+| **Public visitors** | Read the public overview and policy pages and create a Reporter account; they cannot access operational reports or work orders until signed in. |
+
 ## Roadline mapping
 
 Hazard submissions and status are stored in `Hazards`; assignments and work status in `Work_Orders`; activity and per-user notifications in `Updates`; accounts and credentials in `Users`. The compatibility views map these existing tables to the field names the PHP app expects.

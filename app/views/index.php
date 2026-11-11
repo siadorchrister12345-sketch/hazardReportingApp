@@ -193,7 +193,18 @@
                         <label>Your name<input name="name" autocomplete="name" required maxlength="120" placeholder="Jordan Lee"></label>
                     <?php endif; ?>
                     <label>Email address<input type="email" name="email" autocomplete="email" required maxlength="190" placeholder="you@example.com"></label>
-                    <label>Password<input type="password" name="password" autocomplete="<?= $view === 'register' ? 'new-password' : 'current-password' ?>" required minlength="<?= $view === 'register' ? '10' : '1' ?>"<?= $view === 'register' ? ' pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])\S{10,}" title="Use 10 or more characters with uppercase and lowercase letters, a number, a symbol, and no spaces."' : '' ?> placeholder="<?= $view === 'register' ? '10+ characters, no spaces' : 'Your password' ?>"><?php if ($view === 'register'): ?><small>Use 10+ characters with uppercase and lowercase letters, a number, a symbol, and no spaces.</small><?php endif; ?></label>
+                    <label>Password<input type="password" name="password" autocomplete="<?= $view === 'register' ? 'new-password' : 'current-password' ?>" required minlength="<?= $view === 'register' ? '10' : '1' ?>"<?= $view === 'register' ? ' id="registration-password" aria-describedby="password-requirements" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])\S{10,}" title="Use 10 or more characters with uppercase and lowercase letters, a number, a symbol, and no spaces."' : '' ?> placeholder="<?= $view === 'register' ? '10+ characters, no spaces' : 'Your password' ?>"></label>
+                    <?php if ($view === 'register'): ?>
+                        <ul class="password-requirements" id="password-requirements" aria-label="Password requirements">
+                            <li data-password-rule="length"><span aria-hidden="true">○</span> At least 10 characters</li>
+                            <li data-password-rule="uppercase"><span aria-hidden="true">○</span> An uppercase letter</li>
+                            <li data-password-rule="lowercase"><span aria-hidden="true">○</span> A lowercase letter</li>
+                            <li data-password-rule="number"><span aria-hidden="true">○</span> A number</li>
+                            <li data-password-rule="symbol"><span aria-hidden="true">○</span> A symbol</li>
+                            <li data-password-rule="spaces"><span aria-hidden="true">○</span> No spaces</li>
+                        </ul>
+                        <p class="password-requirements-status" role="status" aria-live="polite" data-password-status>0 of 6 password requirements met.</p>
+                    <?php endif; ?>
                     <?php if ($view === 'register'): ?><label>Confirm password<input type="password" name="password_confirmation" autocomplete="new-password" required data-password-confirmation placeholder="Re-enter your password"></label><?php endif; ?>
                     <button class="button button-primary button-wide" type="submit"><?= $view === 'register' ? 'Create reporter account' : 'Sign in' ?><span aria-hidden="true">↗</span></button>
                 </form>
