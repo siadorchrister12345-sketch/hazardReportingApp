@@ -3,6 +3,14 @@ const menuToggle = document.querySelector('#menu-toggle');
 const sidebarClose = document.querySelector('#sidebar-close');
 let hasUnsavedChanges = false;
 
+const deviceMemory = navigator.deviceMemory;
+const logicalProcessors = navigator.hardwareConcurrency;
+// Avoid continuous decorative effects when the browser reports limited resources.
+if ((Number.isFinite(deviceMemory) && deviceMemory <= 4)
+    || (Number.isFinite(logicalProcessors) && logicalProcessors <= 4)) {
+    document.documentElement.classList.add('low-power-device');
+}
+
 const closeSidebar = () => {
     sidebar?.classList.remove('is-open');
     document.body.classList.remove('sidebar-open');

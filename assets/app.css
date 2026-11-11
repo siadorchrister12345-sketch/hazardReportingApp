@@ -2699,3 +2699,49 @@ body.app-shell .notification-row.notification-unread { animation: rise .38s ease
         animation: none !important;
     }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+    html.low-power-device body.app-shell .main-panel::before,
+    html.low-power-device body.app-shell .sidebar,
+    html.low-power-device body.app-shell .brand-mark,
+    html.low-power-device body.app-shell .metric::before,
+    html.low-power-device body.app-shell .recent-surface::before,
+    html.low-power-device body.app-shell .table-surface::before,
+    html.low-power-device body.app-shell .create-report::before,
+    html.low-power-device body.app-shell .account-create::before,
+    html.low-power-device body.app-shell .report-tabs a.is-active::after,
+    html.low-power-device body.app-shell .top-notice i,
+    html.low-power-device body.app-shell .nav-unread,
+    html.low-power-device body.app-shell .notification-row.notification-unread,
+    html.low-power-device body.app-shell .job-list > .job-card,
+    html.low-power-device .auth-panel::before,
+    html.low-power-device .auth-story::after,
+    html.low-power-device .auth-form-wrap .button-primary,
+    html.low-power-device .landing-hero::after,
+    html.low-power-device .landing-orb,
+    html.low-power-device .landing-kicker-dot::after,
+    html.low-power-device .landing-art-glow,
+    html.low-power-device .landing-map,
+    html.low-power-device .landing-route,
+    html.low-power-device .landing-map-pin,
+    html.low-power-device .landing-map-pin b,
+    html.low-power-device .landing-status-card,
+    html.low-power-device .landing-scroll-cue span,
+    html.low-power-device .landing-callout-route,
+    html.low-power-device .landing-callout-orbit {
+        animation: none !important;
+    }
+
+    html.low-power-device body.app-shell .job-list > .job-card {
+        animation: page-arrive .44s cubic-bezier(.2, .75, .25, 1) both;
+    }
+    html.low-power-device body.app-shell .notification-row.notification-unread {
+        animation: rise .38s ease both;
+    }
+    html.low-power-device .auth-form-wrap {
+        animation: form-arrive .65s cubic-bezier(.2, .75, .25, 1) both;
+    }
+    html.low-power-device .auth-form-wrap .button-primary {
+        animation: form-control-arrive .42s .22s ease both !important;
+    }
+}
