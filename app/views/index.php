@@ -12,8 +12,141 @@
     <link rel="stylesheet" href="assets/app.css?v=<?= (int) filemtime(__DIR__ . '/../../assets/app.css') ?>">
     <?php if ($user && $user['role'] === 'user' && $view === 'add_report'): ?><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><?php endif; ?>
 </head>
-<body class="<?= $user && !$isLegalPage ? 'app-shell' : 'auth-shell' ?>" data-refresh="<?= $user && !$isLegalPage ? 'true' : 'false' ?>" data-dashboard="<?= $view === 'dashboard' && $user ? 'true' : 'false' ?>"<?= $user && !$isLegalPage ? ' data-user-id="' . (int) $user['id'] . '"' : '' ?>>
-<?php if (!$user || $isLegalPage): ?>
+<body class="<?= $user && !$isLegalPage ? 'app-shell' : ($view === 'home' ? 'landing-shell' : 'auth-shell') ?>" data-refresh="<?= $user && !$isLegalPage ? 'true' : 'false' ?>" data-dashboard="<?= $view === 'dashboard' && $user ? 'true' : 'false' ?>"<?= $user && !$isLegalPage ? ' data-user-id="' . (int) $user['id'] . '"' : '' ?>>
+<?php if (!$user && $view === 'home'): ?>
+    <div class="landing-page" id="top">
+        <header class="landing-header">
+            <a class="brand landing-brand" href="index.php" aria-label="Roadline home"><span class="brand-mark">R</span><span>roadline<span class="brand-dot">.</span></span></a>
+            <nav class="landing-nav" aria-label="Main navigation">
+                <a href="#how-it-works">How it works</a>
+                <a href="#why-roadline">About Roadline</a>
+                <a class="landing-nav-signin" href="index.php?view=login">Sign in</a>
+                <a class="button button-primary landing-nav-cta" href="index.php?view=register">Create an account <span aria-hidden="true">↗</span></a>
+            </nav>
+        </header>
+        <main>
+            <section class="landing-hero">
+                <div class="landing-orb landing-orb-one" aria-hidden="true"></div>
+                <div class="landing-orb landing-orb-two" aria-hidden="true"></div>
+                <div class="landing-hero-copy">
+                    <p class="landing-kicker"><span class="landing-kicker-dot"></span> A community-first road safety demo</p>
+                    <h1>See a hazard?<br><span>Help move it</span><br>toward a fix.</h1>
+                    <p class="landing-hero-description">Roadline makes it easier to share a road concern, follow its progress, and see how a report moves from first notice to repair confirmation.</p>
+                    <div class="landing-actions">
+                        <a class="button button-primary landing-primary-cta" href="index.php?view=register">Report a hazard <span aria-hidden="true">↗</span></a>
+                        <a class="landing-secondary-cta" href="#how-it-works"><span class="landing-play-icon" aria-hidden="true">↓</span> See how it works</a>
+                    </div>
+                    <p class="landing-hero-note"><span aria-hidden="true">✳</span> A clear path for neighbors, crews, and coordinators.</p>
+                </div>
+                <div class="landing-hero-art" aria-hidden="true">
+                    <div class="landing-art-glow"></div>
+                    <div class="landing-map">
+                        <span class="landing-map-block landing-map-block-one"></span>
+                        <span class="landing-map-block landing-map-block-two"></span>
+                        <span class="landing-map-block landing-map-block-three"></span>
+                        <span class="landing-map-road landing-map-road-one"></span>
+                        <span class="landing-map-road landing-map-road-two"></span>
+                        <span class="landing-route"></span>
+                        <span class="landing-map-label landing-map-label-one">NORTH AVE.</span>
+                        <span class="landing-map-label landing-map-label-two">COMMUNITY WAY</span>
+                        <span class="landing-map-pin"><i>!</i><b></b></span>
+                    </div>
+                    <article class="landing-status-card">
+                        <span class="landing-status-icon">✓</span>
+                        <span><strong>Every update, in one place</strong><small>From report to verified repair</small></span>
+                        <span class="landing-status-live"><i></i> TRACKED</span>
+                    </article>
+                    <div class="landing-art-caption"><span class="landing-caption-line"></span> A closer look at the route from report to resolution</div>
+                </div>
+                <a class="landing-scroll-cue" href="#why-roadline" aria-label="Scroll to learn about Roadline"><span></span></a>
+            </section>
+            <section class="landing-intro" id="why-roadline">
+                <div class="landing-section-index">01 <span>/</span> THE IDEA</div>
+                <div class="landing-intro-copy">
+                    <p class="landing-eyebrow">NOTICE IT. REPORT IT. FOLLOW THROUGH.</p>
+                    <h2>Small details can make a <span>safer route.</span></h2>
+                </div>
+                <p class="landing-intro-description">A pothole, a damaged sign, or a blocked drain can be hard to track once it has been reported. Roadline brings the details, updates, and confirmation into a single, easy-to-follow workflow.</p>
+            </section>
+            <section class="landing-benefits" aria-label="What Roadline helps with">
+                <article class="landing-benefit landing-benefit-featured">
+                    <span class="landing-benefit-number">01 / SHARE THE DETAILS</span>
+                    <span class="landing-benefit-icon" aria-hidden="true">⌖</span>
+                    <h3>A useful report starts with a clear location.</h3>
+                    <p>Describe what you noticed, add a photo, and pin the spot so the issue is easier to understand.</p>
+                    <span class="landing-benefit-decoration" aria-hidden="true"></span>
+                </article>
+                <article class="landing-benefit">
+                    <span class="landing-benefit-number">02 / FOLLOW THE WORK</span>
+                    <span class="landing-benefit-icon landing-benefit-icon-amber" aria-hidden="true">↗</span>
+                    <h3>Know what happens next.</h3>
+                    <p>Follow review, assignment, field updates, and messages as the report moves through the workflow.</p>
+                </article>
+                <article class="landing-benefit">
+                    <span class="landing-benefit-number">03 / CLOSE THE LOOP</span>
+                    <span class="landing-benefit-icon landing-benefit-icon-blue" aria-hidden="true">✓</span>
+                    <h3>Confirm the result together.</h3>
+                    <p>When work is marked complete, the reporter can confirm the repair or let the team know it still needs attention.</p>
+                </article>
+            </section>
+            <section class="landing-how" id="how-it-works">
+                <div class="landing-how-heading">
+                    <div>
+                        <p class="landing-eyebrow">A SIMPLE THREE-STEP FLOW</p>
+                        <h2>From first look to <span>follow-through.</span></h2>
+                    </div>
+                    <p>Clear handoffs make it easier for everyone to stay on the same page.</p>
+                </div>
+                <div class="landing-steps">
+                    <article class="landing-step">
+                        <span class="landing-step-number">01</span>
+                        <span class="landing-step-symbol" aria-hidden="true">＋</span>
+                        <h3>Report what you see</h3>
+                        <p>Choose a location, identify the hazard, explain what happened, and add a photo.</p>
+                        <span class="landing-step-link">A neighbor starts the process <b>↗</b></span>
+                    </article>
+                    <article class="landing-step">
+                        <span class="landing-step-number">02</span>
+                        <span class="landing-step-symbol landing-step-symbol-gold" aria-hidden="true">⌕</span>
+                        <h3>Review and coordinate</h3>
+                        <p>The operations team reviews reports and coordinates work with an assigned field worker.</p>
+                        <span class="landing-step-link">The right details reach the crew <b>↗</b></span>
+                    </article>
+                    <article class="landing-step">
+                        <span class="landing-step-number">03</span>
+                        <span class="landing-step-symbol landing-step-symbol-blue" aria-hidden="true">✓</span>
+                        <h3>Share an update</h3>
+                        <p>Follow progress and confirm whether the reported hazard has been addressed.</p>
+                        <span class="landing-step-link">Close the loop with the community <b>↗</b></span>
+                    </article>
+                </div>
+            </section>
+            <section class="landing-callout">
+                <span class="landing-callout-orbit landing-callout-orbit-one" aria-hidden="true"></span>
+                <span class="landing-callout-orbit landing-callout-orbit-two" aria-hidden="true"></span>
+                <div class="landing-callout-copy">
+                    <p class="landing-eyebrow">YOUR NEXT STEP STARTS HERE</p>
+                    <h2>Make the next report<br><span>count.</span></h2>
+                    <p>Create a reporter account to share a hazard and follow its progress.</p>
+                    <a class="button landing-callout-button" href="index.php?view=register">Get started <span aria-hidden="true">↗</span></a>
+                </div>
+                <div class="landing-callout-route" aria-hidden="true"><span></span><i></i><b></b></div>
+                <div class="landing-callout-stamp" aria-hidden="true">ROADLINE<br><span>COMMUNITY<br>TO CREW</span></div>
+            </section>
+        </main>
+        <footer class="landing-footer">
+            <a class="brand landing-footer-brand" href="#top"><span class="brand-mark">R</span><span>roadline<span class="brand-dot">.</span></span></a>
+            <p>A demonstration of a clearer community-to-repair workflow.</p>
+            <nav class="landing-footer-links" aria-label="Project information">
+                <a href="index.php?view=login">Sign in</a>
+                <?php foreach ($legalLinkLabels as $legalView => $label): ?>
+                    <a href="index.php?view=<?= e($legalView) ?>"><?= e($label) ?></a>
+                <?php endforeach; ?>
+            </nav>
+            <small>Academic project demo · Not an official public reporting or emergency service.</small>
+        </footer>
+    </div>
+<?php elseif (!$user || $isLegalPage): ?>
     <main class="auth-layout">
         <section class="auth-story">
             <a class="brand brand-light" href="index.php"><span class="brand-mark">R</span><span>roadline<span class="brand-dot">.</span></span></a>
@@ -28,7 +161,7 @@
         <section class="auth-panel">
             <div class="auth-form-wrap <?= $isLegalPage ? 'auth-form-policy' : '' ?>">
                 <?php if ($isLegalPage): ?>
-                    <a class="auth-back" href="index.php">← Back to sign in</a>
+                    <a class="auth-back" href="index.php">← Back to Roadline</a>
                     <p class="eyebrow">ROADLINE / PROJECT INFORMATION</p>
                     <h2><?= e($pageTitle) ?></h2>
                     <p class="muted"><?= e($legalPolicies[$view]['intro']) ?></p>
@@ -48,6 +181,7 @@
                         <?php endforeach; ?>
                     </nav>
                 <?php else: ?>
+                <a class="auth-about-link" href="index.php?view=home">← About Roadline</a>
                 <p class="eyebrow"><?= $view === 'register' ? 'Join your community' : 'Roadline operations' ?></p>
                 <h2><?= $view === 'register' ? 'Create your account' : 'Good to see you.' ?></h2>
                 <p class="muted"><?= $view === 'register' ? 'Set up a reporter account to submit and follow hazards.' : 'Sign in to continue to your safety dashboard.' ?></p>

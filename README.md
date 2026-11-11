@@ -35,9 +35,9 @@ A PHP 8.2+ and MySQL hazard-reporting workflow for citizens, field workers, admi
 
    If you set these values in `.env`, clear them after creating the account. Do not put real passwords in this README or other source-controlled files. If a real credential was added here, remove it from any shared copies and change that account's password.
 
-7. Visit `http://localhost/hazardReportingApp/`.
+7. Visit `http://localhost/hazardReportingApp/`. The public home page explains how Roadline's hazard-reporting workflow works; use **Report a hazard** or **Create an account** to register, or choose **Sign in** if you already have an account.
 
-The first reporter account can be created from the sign-in screen. Staff accounts are provisioned by an Admin or Super Admin. The Super Admin can create Admins, Workers, and Reporters; Admins can create Workers and Reporters. The original ERD has no login credentials, so the migration adds `Email` and `Password_Hash` to `Users`. Existing user rows remain intact but need an email, a PHP password hash, and an app role before their owners can sign in. Roles used by the app are `super_admin`, `admin`, `worker`, and `user`.
+The first reporter account can be created from the public home page or sign-in screen. Staff accounts are provisioned by an Admin or Super Admin. The Super Admin can create Admins, Workers, and Reporters; Admins can create Workers and Reporters. The original ERD has no login credentials, so the migration adds `Email` and `Password_Hash` to `Users`. Existing user rows remain intact but need an email, a PHP password hash, and an app role before their owners can sign in. Roles used by the app are `super_admin`, `admin`, `worker`, and `user`.
 
 ## Roadline mapping
 

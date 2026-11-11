@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 $user = current_user();
-$view = (string) ($_GET['view'] ?? ($user ? 'dashboard' : 'login'));
+$view = (string) ($_GET['view'] ?? ($user ? 'dashboard' : 'home'));
 $reportTab = (string) ($_GET['tab'] ?? 'ongoing');
 if (!in_array($reportTab, $user && $user['role'] === 'user' ? ['messages', 'history', 'ongoing'] : ['history', 'ongoing'], true)) {
     $reportTab = 'ongoing';
@@ -17,7 +17,7 @@ $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 $appName = $config['app']['name'];
 
-if (!$user && !in_array($view, array_merge(['login', 'register'], $legalViews), true)) {
+if (!$user && !in_array($view, array_merge(['home', 'login', 'register'], $legalViews), true)) {
     redirect_to('login');
 }
 if ($user && in_array($view, ['login', 'register'], true)) {
@@ -99,6 +99,7 @@ if ($user) {
 }
 
 $titleByView = [
+    'home' => 'Safer streets start with a clear report',
     'dashboard' => 'Overview',
     'reports' => 'My reports',
     'add_report' => 'Add report',

@@ -5,12 +5,14 @@ let hasUnsavedChanges = false;
 
 const closeSidebar = () => {
     sidebar?.classList.remove('is-open');
+    document.body.classList.remove('sidebar-open');
     menuToggle?.setAttribute('aria-expanded', 'false');
     menuToggle?.setAttribute('aria-label', 'Open navigation');
 };
 
 menuToggle?.addEventListener('click', () => {
     const isOpen = sidebar?.classList.toggle('is-open') ?? false;
+    document.body.classList.toggle('sidebar-open', isOpen);
     menuToggle.setAttribute('aria-expanded', String(isOpen));
     menuToggle.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
 });
