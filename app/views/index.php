@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="assets/app.css?v=<?= (int) filemtime(__DIR__ . '/../../assets/app.css') ?>">
     <?php if ($user && $user['role'] === 'user' && $view === 'add_report'): ?><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><?php endif; ?>
 </head>
-<body class="<?= $user && !$isLegalPage ? 'app-shell' : ($view === 'home' ? 'landing-shell' : 'auth-shell') ?>" data-refresh="<?= $user && !$isLegalPage ? 'true' : 'false' ?>" data-dashboard="<?= $view === 'dashboard' && $user ? 'true' : 'false' ?>"<?= $user && !$isLegalPage ? ' data-user-id="' . (int) $user['id'] . '"' : '' ?>>
+<body class="<?= $user && !$isLegalPage ? 'app-shell' : ($view === 'home' ? 'landing-shell' : 'auth-shell') ?>" data-refresh="<?= $user && !$isLegalPage ? 'true' : 'false' ?>" data-dashboard="<?= $view === 'dashboard' && $user ? 'true' : 'false' ?>"<?= $user && !$isLegalPage ? ' data-user-id="' . (int) $user['id'] . '" data-latest-notification-id="' . $latestNotificationId . '"' : '' ?>>
 <?php if (!$user && $view === 'home'): ?>
     <div class="landing-page" id="top">
         <header class="landing-header">

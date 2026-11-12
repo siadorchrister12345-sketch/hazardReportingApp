@@ -99,6 +99,9 @@ if ($user) {
     $statement = $pdo->prepare('SELECT n.*, r.public_id, r.title, (SELECT j.status FROM roadline_jobs j WHERE j.report_id = n.report_id LIMIT 1) AS job_status FROM roadline_notifications n JOIN roadline_reports r ON r.id = n.report_id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 12');
     $statement->execute([$user['id']]);
     $notifications = $statement->fetchAll();
+    $latestNotificationId = $notifications
+        ? max(array_map(static fn (array $notification): int => (int) $notification['id'], $notifications))
+        : 0;
 }
 
 $titleByView = [

@@ -595,6 +595,16 @@ if (document.body.dataset.refresh === 'true') {
             }
             if (!response.ok) throw new Error(`Live update request failed (${response.status}).`);
             const updates = await response.json();
+            const latestNotificationId = Number(document.body.dataset.latestNotificationId || 0);
+            const newJobNotification = updates.notifications.find((notification) => (
+                Number(notification.id) > latestNotificationId
+                && typeof notification.report_url === 'string'
+                && notification.report_url.startsWith('index.php?view=jobs')
+            ));
+            if (new URLSearchParams(window.location.search).get('view') === 'jobs' && newJobNotification) {
+                window.location.assign(newJobNotification.report_url);
+                return;
+            }
             if (updates.dashboard_counts) {
                 document.querySelectorAll('[data-dashboard-count]').forEach((count) => {
                     const value = updates.dashboard_counts[count.dataset.dashboardCount];
