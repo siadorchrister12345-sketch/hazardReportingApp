@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if ($action === 'login') {
             $email = mb_strtolower(post_string('email', 190));
-            $statement = db()->prepare('SELECT id, name, email, password_hash, role FROM roadline_app_users WHERE email = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1');
+            $statement = db()->prepare('SELECT id, name, email, password_hash, role, first_name, middle_name, last_name, contact FROM roadline_app_users WHERE email = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1');
             $statement->execute([$email]);
             $account = $statement->fetch();
             if (!$account || !is_string($account['password_hash']) || $account['password_hash'] === '' || !password_verify(post_string('password'), $account['password_hash'])) {
@@ -20,16 +20,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             session_regenerate_id(true);
             $_SESSION['user'] = ['id' => (int) $account['id'], 'name' => $account['name'], 'email' => $account['email'], 'role' => $account['role']];
             flash('Welcome back, ' . $account['name'] . '.');
-            redirect_to();
+            redirect_to(user_profile_is_complete($account) ? 'dashboard' : 'profile');
         }
 
         if ($action === 'register') {
-            $name = post_string('name', 120);
+            $firstName = post_string('first_name', 25);
+            $middleName = post_string('middle_name', 25);
+            $lastName = post_string('last_name', 25);
+            $contact = post_string('contact', 254);
+            $name = trim(implode(' ', array_filter([$firstName, $middleName, $lastName], static fn (string $part): bool => $part !== '')));
             $email = mb_strtolower(post_string('email', 190));
             $password = (string) ($_POST['password'] ?? '');
             $passwordConfirmation = (string) ($_POST['password_confirmation'] ?? '');
-            if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                throw new RuntimeException('Enter your name and a valid email address.');
+            if ($firstName === '' || $lastName === '' || $contact === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new RuntimeException('Enter your first and last name, contact number, and a valid email address.');
             }
             if (!registration_password_is_valid($password)) {
                 throw new RuntimeException('Use at least 10 characters with no spaces, including an uppercase letter, a lowercase letter, a number, and a symbol.');
@@ -37,8 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!hash_equals($password, $passwordConfirmation)) {
                 throw new RuntimeException('The password confirmation does not match.');
             }
-            $statement = db()->prepare('INSERT INTO roadline_app_users (name, email, password_hash, role) VALUES (?, ?, ?, \'user\')');
-            $statement->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT)]);
+            $statement = db()->prepare('INSERT INTO roadline_app_users (name, first_name, middle_name, last_name, contact, email, password_hash, role) VALUES (?, ?, ?, ?, ?, ?, ?, \'user\')');
+            $statement->execute([$name, $firstName, $middleName !== '' ? $middleName : null, $lastName, $contact, $email, password_hash($password, PASSWORD_DEFAULT)]);
             flash('Your reporter account was created. Please sign in to continue.');
             redirect_to('login');
         }
@@ -50,6 +54,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $actor = require_user();
+        if ($action === 'save_profile') {
+            $firstName = post_string('first_name', 25);
+            $middleName = post_string('middle_name', 25);
+            $lastName = post_string('last_name', 25);
+            $contact = post_string('contact', 254);
+            if ($firstName === '' || $lastName === '' || $contact === '') {
+                throw new RuntimeException('Enter your first and last name and a contact number.');
+            }
+            $name = trim(implode(' ', array_filter([$firstName, $middleName, $lastName], static fn (string $part): bool => $part !== '')));
+            db()->prepare('UPDATE roadline_app_users SET name = ?, first_name = ?, middle_name = ?, last_name = ?, contact = ? WHERE id = ?')
+                ->execute([$name, $firstName, $middleName !== '' ? $middleName : null, $lastName, $contact, $actor['id']]);
+            flash('Your profile details were saved.');
+            redirect_to('dashboard');
+        }
+        if (!user_profile_is_complete($actor)) {
+            redirect_to('profile');
+        }
 
         if ($action === 'submit_report') {
             require_role(['user']);
@@ -246,7 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 audit_notice((int) $actor['id'], (int) $job['report_id'], 'Your report ' . $job['public_id'] . ' is closed. Thanks for verifying the repair.', $photoPath);
                 flash('Repair confirmed. The hazard report is now closed.');
             } else {
-                $pdo->prepare("UPDATE roadline_jobs SET status = 'in_progress', completed_at = NULL, verified_at = NULL WHERE id = ?")->execute([$jobId]);
+                $pdo->prepare("UPDATE roadline_jobs SET status = 'in_progress', completed_at = NULL, verified_at = NULL, updated_at = NOW() WHERE id = ?")->execute([$jobId]);
                 $message = 'The reporter says report ' . $job['public_id'] . ' still needs attention.';
                 save_conversation_message((int) $job['report_id'], (int) $actor['id'], 'The hazard is still present and needs more work.', $photoPath);
                 audit_notice((int) $actor['id'], (int) $job['report_id'], 'You reported that report ' . $job['public_id'] . ' still needs attention.', $photoPath);

@@ -298,6 +298,10 @@ td small { display: block; margin-top: 4px; color: #98a199; font-size: 9px; }
 .verification-hint { color: #a35440; background: var(--coral-soft); padding: 9px 11px; border-radius: 4px; font-size: 10px; margin: 12px 0 0; }
 .account-layout { display: grid; grid-template-columns: minmax(230px, .65fr) minmax(0, 1.7fr); align-items: start; gap: 16px; min-width: 0; }
 .account-layout > * { min-width: 0; }
+.profile-form-surface { max-width: 760px; padding: 24px; }
+.profile-form-surface .section-heading { margin-bottom: 16px; }
+.profile-guidance { max-width: 620px; margin-bottom: 18px; }
+.profile-form-surface .form-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .account-create .section-heading { margin-bottom: 18px; }
 .account-create .button { margin-top: 3px; }
 .small-copy { font-size: 9px; margin-top: 12px; line-height: 1.5; }

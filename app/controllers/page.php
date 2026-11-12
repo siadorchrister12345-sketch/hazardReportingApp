@@ -21,7 +21,10 @@ if (!$user && !in_array($view, array_merge(['home', 'login', 'register'], $legal
     redirect_to('login');
 }
 if ($user && in_array($view, ['login', 'register'], true)) {
-    redirect_to();
+    redirect_to(user_profile_is_complete($user) ? 'dashboard' : 'profile');
+}
+if ($user && !user_profile_is_complete($user) && $view !== 'profile') {
+    redirect_to('profile');
 }
 
 $isManager = $user && in_array($user['role'], ['admin', 'super_admin'], true);
@@ -40,7 +43,7 @@ if ($user) {
 
     if ($isManager) {
         $reportRows = $pdo->query('SELECT r.*, u.name AS reporter_name, j.id AS job_id, j.status AS job_status, j.worker_id, w.name AS worker_name FROM roadline_reports r LEFT JOIN roadline_app_users u ON u.id = r.reporter_id LEFT JOIN roadline_jobs j ON j.report_id = r.id LEFT JOIN roadline_app_users w ON w.id = j.worker_id ORDER BY r.id DESC LIMIT 100')->fetchAll();
-        $jobRows = $pdo->query('SELECT j.*, r.public_id, r.title, r.category, r.road_location_label, r.latitude, r.longitude, r.photo_path, r.reporter_id, reporter.name AS reporter_name, worker.name AS worker_name FROM roadline_jobs j JOIN roadline_reports r ON r.id = j.report_id LEFT JOIN roadline_app_users reporter ON reporter.id = r.reporter_id LEFT JOIN roadline_app_users worker ON worker.id = j.worker_id ORDER BY FIELD(j.status, \'pending_assignment\', \'assigned\', \'in_progress\', \'pending_user_verification\', \'completed\'), j.updated_at DESC LIMIT 100')->fetchAll();
+        $jobRows = $pdo->query('SELECT j.*, r.public_id, r.title, r.category, r.road_location_label, r.latitude, r.longitude, r.photo_path, r.reporter_id, reporter.name AS reporter_name, worker.name AS worker_name FROM roadline_jobs j JOIN roadline_reports r ON r.id = j.report_id LEFT JOIN roadline_app_users reporter ON reporter.id = r.reporter_id LEFT JOIN roadline_app_users worker ON worker.id = j.worker_id ORDER BY FIELD(j.status, \'pending_assignment\', \'assigned\', \'in_progress\', \'pending_user_verification\', \'completed\'), j.updated_at DESC, j.id DESC')->fetchAll();
     } elseif ($user['role'] === 'worker') {
         $statement = $pdo->prepare('SELECT j.*, r.public_id, r.title, r.category, r.description, r.road_location_label, r.latitude, r.longitude, r.photo_path, reporter.name AS reporter_name FROM roadline_jobs j JOIN roadline_reports r ON r.id = j.report_id LEFT JOIN roadline_app_users reporter ON reporter.id = r.reporter_id WHERE j.worker_id = ? ORDER BY FIELD(j.status, \'assigned\', \'in_progress\', \'pending_user_verification\', \'completed\'), j.updated_at DESC');
         $statement->execute([$user['id']]);
@@ -105,6 +108,7 @@ $titleByView = [
     'add_report' => 'Add report',
     'jobs' => 'Work orders',
     'accounts' => 'People & access',
+    'profile' => 'My profile',
     'notifications' => 'Notifications',
     'privacy' => 'Privacy policy',
     'terms' => 'Terms of use',
@@ -120,7 +124,7 @@ $legalLinkLabels = [
 $pageTitle = $user
     ? ($titleByView[$view] ?? 'Overview')
     : ($titleByView[$view] ?? ($view === 'register' ? 'Create account' : 'Sign in'));
-if ($user && !in_array($view, array_merge(['dashboard', 'reports', 'add_report', 'jobs', 'accounts', 'notifications'], $legalViews), true)) {
+if ($user && !in_array($view, array_merge(['dashboard', 'reports', 'add_report', 'jobs', 'accounts', 'notifications', 'profile'], $legalViews), true)) {
     $view = 'dashboard';
     $pageTitle = 'Overview';
 }
@@ -132,7 +136,7 @@ $legalPolicies = [
             [
                 'heading' => 'Information in the demonstration',
                 'paragraphs' => [
-                    'Account details include the name and email address you provide and a password stored as a password hash. Hazard reports may include a category, title, description, location, and uploaded photo. Report conversations and workflow updates may also be stored with their timestamps.',
+                    'Account details include your first, middle (if provided), and last names, contact number, email address, and a password stored as a password hash. Hazard reports may include a category, title, description, location, and uploaded photo. Report conversations and workflow updates may also be stored with their timestamps.',
                     'The site uses a session cookie to keep you signed in and protect form submissions. Do not use real passwords or submit sensitive personal information, private images, or details about other people.',
                 ],
             ],
@@ -257,4 +261,5 @@ if ($user && $user['role'] === 'user') {
 if ($isManager) {
     $navItems[] = ['accounts', 'People & access', '♙'];
 }
+$navItems[] = ['profile', 'My profile', '♙'];
 $navItems[] = ['notifications', 'Notifications', '◉'];

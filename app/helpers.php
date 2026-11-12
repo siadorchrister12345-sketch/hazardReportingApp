@@ -90,6 +90,13 @@ function registration_password_is_valid(string $password): bool
         && preg_match('/\A(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])\S+\z/u', $password) === 1;
 }
 
+function user_profile_is_complete(array $user): bool
+{
+    return trim((string) ($user['first_name'] ?? '')) !== ''
+        && trim((string) ($user['last_name'] ?? '')) !== ''
+        && trim((string) ($user['contact'] ?? '')) !== '';
+}
+
 function save_conversation_message(int $reportId, int $senderId, string $message, ?string $photoPath = null): void
 {
     $statement = db()->prepare('INSERT INTO roadline_conversation_messages (report_id, sender_user_id, message, photo_path) VALUES (?, ?, ?, ?)');

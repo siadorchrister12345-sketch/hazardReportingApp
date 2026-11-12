@@ -85,7 +85,7 @@ function current_user(): ?array
         return null;
     }
 
-    $statement = db()->prepare('SELECT id, name, email, role FROM roadline_app_users WHERE id = ? AND is_active = 1 AND deleted_at IS NULL');
+    $statement = db()->prepare('SELECT id, name, email, role, first_name, middle_name, last_name, contact FROM roadline_app_users WHERE id = ? AND is_active = 1 AND deleted_at IS NULL');
     $statement->execute([$sessionUser['id']]);
     $account = $statement->fetch();
     if (!$account) {
@@ -99,6 +99,10 @@ function current_user(): ?array
         'name' => $account['name'],
         'email' => $account['email'],
         'role' => $account['role'],
+        'first_name' => $account['first_name'],
+        'middle_name' => $account['middle_name'],
+        'last_name' => $account['last_name'],
+        'contact' => $account['contact'],
     ];
     $_SESSION['user'] = $user;
 

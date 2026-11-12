@@ -84,6 +84,8 @@ ALTER TABLE Updates
 
 CREATE OR REPLACE VIEW roadline_app_users AS
 SELECT User_ID AS id, Display_Name AS name, Email AS email,
+       First_Name AS first_name, middle_name AS middle_name,
+       Last_Name AS last_name, Contact AS contact,
        Password_Hash AS password_hash, Role AS role,
        Is_Active AS is_active, Deleted_At AS deleted_at,
        Timestamp AS created_at

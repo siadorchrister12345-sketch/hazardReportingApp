@@ -190,7 +190,12 @@
                     <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
                     <input type="hidden" name="action" value="<?= $view === 'register' ? 'register' : 'login' ?>">
                     <?php if ($view === 'register'): ?>
-                        <label>Your name<input name="name" autocomplete="name" required maxlength="120" placeholder="Jordan Lee"></label>
+                        <div class="form-two">
+                            <label>First name<input name="first_name" autocomplete="given-name" required maxlength="25" placeholder="Jordan"></label>
+                            <label>Middle name <small>Optional</small><input name="middle_name" autocomplete="additional-name" maxlength="25" placeholder="Taylor"></label>
+                            <label>Last name<input name="last_name" autocomplete="family-name" required maxlength="25" placeholder="Lee"></label>
+                            <label>Contact number<input type="tel" name="contact" autocomplete="tel" required maxlength="254" placeholder="+63 912 345 6789"></label>
+                        </div>
                     <?php endif; ?>
                     <label>Email address<input type="email" name="email" autocomplete="email" required maxlength="190" placeholder="you@example.com"></label>
                     <label>Password<input type="password" name="password" autocomplete="<?= $view === 'register' ? 'new-password' : 'current-password' ?>" required minlength="<?= $view === 'register' ? '10' : '1' ?>"<?= $view === 'register' ? ' id="registration-password" aria-describedby="password-requirements" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])\S{10,}" title="Use 10 or more characters with uppercase and lowercase letters, a number, a symbol, and no spaces."' : '' ?> placeholder="<?= $view === 'register' ? '10+ characters, no spaces' : 'Your password' ?>"></label>
@@ -241,7 +246,23 @@
             <div class="page-wrap">
                 <div class="page-heading"><div><p class="eyebrow"><?= e(date('F j, Y')) ?> <span class="heading-dot">·</span> FIELD OPERATIONS</p><h1><?= e($pageTitle) ?><span class="heading-period">.</span></h1><p class="muted"><?= $user['role'] === 'user' ? 'Your reports, updates, and verified repairs.' : ($user['role'] === 'worker' ? 'Your assigned road work, from dispatch through closeout.' : 'A live view of reports moving through the repair process.') ?></p></div><?php if ($user['role'] === 'user' && $view === 'dashboard'): ?><a class="button button-primary" href="index.php?view=add_report"><span>＋</span> Report a hazard</a><?php endif; ?></div>
                 <?php if ($flash): ?><div class="flash flash-<?= e($flash['kind']) ?>" role="status"><?= e($flash['message']) ?></div><?php endif; ?>
-                <?php if ($view === 'dashboard'): ?>
+                <?php if ($view === 'profile'): ?>
+                    <section class="surface profile-form-surface">
+                        <div class="section-heading"><div><p class="eyebrow">ACCOUNT DETAILS</p><h2><?= user_profile_is_complete($user) ? 'Your profile' : 'Complete your profile' ?></h2></div></div>
+                        <?php if (!user_profile_is_complete($user)): ?><p class="muted profile-guidance">Your existing display name, “<?= e($user['name']) ?>,” is preserved. Please enter each name part accurately and add a contact number so your account details can be completed.</p><?php endif; ?>
+                        <form method="post" class="form-stack">
+                            <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                            <input type="hidden" name="action" value="save_profile">
+                            <div class="form-two">
+                                <label>First name<input name="first_name" autocomplete="given-name" required maxlength="25" value="<?= e($user['first_name']) ?>"></label>
+                                <label>Middle name <small>Optional</small><input name="middle_name" autocomplete="additional-name" maxlength="25" value="<?= e($user['middle_name']) ?>"></label>
+                                <label>Last name<input name="last_name" autocomplete="family-name" required maxlength="25" value="<?= e($user['last_name']) ?>"></label>
+                                <label>Contact number<input type="tel" name="contact" autocomplete="tel" required maxlength="254" value="<?= e($user['contact']) ?>"></label>
+                            </div>
+                            <button class="button button-primary" type="submit">Save profile details <span aria-hidden="true">↗</span></button>
+                        </form>
+                    </section>
+                <?php elseif ($view === 'dashboard'): ?>
                     <section class="metric-grid" aria-label="Status summary">
                         <?php if ($isManager): ?>
                             <article class="metric metric-green"><div class="metric-top"><span>Needs review</span><b>01</b></div><strong data-dashboard-count="review"><?= number_format($counts['review']) ?></strong><small>reports waiting in triage</small><a href="index.php?view=reports">Open triage <span>↗</span></a></article>
